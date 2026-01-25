@@ -126,6 +126,11 @@ class ViolationManager:
         return self._record_violation(frame, vehicle_id, bbox, "traffic_light", 
                                      extra_info={"light_state": light_state})
     
+    def record_illegal_crossing_violation(self, frame, object_id, bbox, object_type=None):
+        """Record an illegal crossing violation"""
+        return self._record_violation(frame, object_id, bbox, "illegal_crossing", 
+                                     extra_info={"object_type": object_type})
+    
     def record_accident(self, frame, vehicles_involved, bbox=None, accident_class=None):
         """
         Record a traffic accident - delegate to accident alert manager

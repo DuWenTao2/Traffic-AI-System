@@ -22,7 +22,7 @@ if __name__ == '__main__':
         # Example configuration for local video file
         {
             "id": "video2", 
-            "source": r"TestingVideos\test01.mp4",
+            "source": r"TestingVideos\test02.mp4",
             "use_stream": False,
             "location": "Test Road Intersection",
             "coordinates": {"lat": 0.0, "lng": 0.0},

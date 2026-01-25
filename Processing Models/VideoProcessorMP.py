@@ -45,6 +45,10 @@ helmet_violation_dir = os.path.join(models_dir, "Bike_Violations")
 if helmet_violation_dir not in sys.path:
     sys.path.append(helmet_violation_dir)
 
+illegal_crossing_dir = os.path.join(models_dir, "IllegalCrossing")
+if illegal_crossing_dir not in sys.path:
+    sys.path.append(illegal_crossing_dir)
+
 # Add Violation_Proc directory for the unified violation manager
 violation_proc_dir = os.path.join(current_dir, "Violation_Proc")
 if violation_proc_dir not in sys.path:
@@ -93,12 +97,19 @@ helmet_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helmet_module)
 HelmetViolationDetector = helmet_module.HelmetViolationDetector
 
+# Import IllegalCrossingDetector module
+illegal_crossing_module_path = os.path.join(illegal_crossing_dir, "illegal_crossing_detector.py")
+spec = importlib.util.spec_from_file_location("illegal_crossing_detector", illegal_crossing_module_path)
+illegal_crossing_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(illegal_crossing_module)
+IllegalCrossingDetector = illegal_crossing_module.IllegalCrossingDetector
+
 # Import violation management modules  
 from Violation_Proc.violation_manager import ViolationManager
 from Violation_Proc.accident_alert_manager import AccidentAlertManager
 
-# Define vehicle and bike class IDs for YOLOv8
-VEHICLE_CLASSES = [1, 2, 3, 5, 7]  # car, motorcycle, airplane, bus, truck
+# Define vehicle, bike, person and other class IDs for YOLOv8
+VEHICLE_CLASSES = [0, 1, 2, 3, 4, 5, 7]  # person, car, motorcycle, airplane, bicycle, bus, truck
 BICYCLE_CLASSES = [4]  # bicycle
 
 class VideoProcessorMP(multiprocessing.Process):
@@ -138,7 +149,8 @@ class VideoProcessorMP(multiprocessing.Process):
             "traffic_violation": False, 
             "speed_detection": True,
             "parking_detection": True,
-            "wrong_direction": True
+            "wrong_direction": True,
+            "illegal_crossing": True
         }
     
     def run(self):
@@ -316,9 +328,16 @@ class VideoProcessorMP(multiprocessing.Process):
             )
             print(f"[{self.video_id}] Helmet violation detector initialized")
             
+            # Initialize illegal crossing detector
+            self.illegal_crossing_detector = IllegalCrossingDetector(
+                stream_id=self.video_id,
+                violation_manager=self.violation_manager
+            )
+            print(f"[{self.video_id}] Illegal crossing detector initialized")
+            
             # Load YOLO model (each process needs its own model instance)
             print(f"[{self.video_id}] Loading YOLO model...")
-            self.model = YOLO('vehicle_kitti_v0_best.pt')
+            self.model = YOLO('yolov8s.pt')
 
             # Main processing loop
             print(f"[{self.video_id}] Starting processing loop...")
@@ -472,6 +491,28 @@ class VideoProcessorMP(multiprocessing.Process):
                             import traceback
                             traceback.print_exc()
                 
+                # Run illegal crossing detection if enabled
+                if self.model_settings.get("illegal_crossing", True):
+                    # Check if we have any illegal crossing areas defined
+                    if AreaType.ILLEGAL_CROSSING in self.area_manager.areas and len(self.area_manager.areas[AreaType.ILLEGAL_CROSSING]) > 0:
+                        # Process illegal crossing violations
+                        try:
+                            processed_frame = self.illegal_crossing_detector.process_objects(
+                                processed_frame, self.tracked_objects, self.area_manager)
+                        except Exception as e:
+                            print(f"[{self.video_id}] Error in illegal crossing detection: {str(e)}")
+                            import traceback
+                            traceback.print_exc()
+                    else:
+                        # If no illegal crossing areas defined, use full screen
+                        try:
+                            processed_frame = self.illegal_crossing_detector.process_objects(
+                                processed_frame, self.tracked_objects, self.area_manager)
+                        except Exception as e:
+                            print(f"[{self.video_id}] Error in illegal crossing detection (full screen): {str(e)}")
+                            import traceback
+                            traceback.print_exc()
+                
                 # Draw all areas on the frame
                 processed_frame = self.area_manager.draw_areas(processed_frame)
                 
@@ -525,6 +566,12 @@ class VideoProcessorMP(multiprocessing.Process):
                     self.helmet_detector.toggle_detection()
                     status = "ENABLED" if self.helmet_detector.detection_enabled else "DISABLED"
                     print(f"[{self.video_id}] Helmet detection {status}")
+                
+                # Handle illegal crossing detection toggle
+                if key == ord('i'):
+                    self.model_settings["illegal_crossing"] = not self.model_settings["illegal_crossing"]
+                    status = "ENABLED" if self.model_settings["illegal_crossing"] else "DISABLED"
+                    print(f"[{self.video_id}] Illegal crossing detection {status}")
                 
                 # Handle display scaling controls
                 if key == ord('+') or key == ord('='):
