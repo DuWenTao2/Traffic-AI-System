@@ -113,7 +113,7 @@ VEHICLE_CLASSES = [0, 1, 2, 3, 4, 5, 7]  # person, car, motorcycle, airplane, bi
 BICYCLE_CLASSES = [4]  # bicycle
 
 class VideoProcessorMP(multiprocessing.Process):
-    def __init__(self, video_id, source, use_stream=False, camera_location="Unknown", coordinates=None, speed_limit=60):
+    def __init__(self, video_id, source, use_stream=False, camera_location="Unknown", coordinates=None, max_speed=60, min_speed=5):
         multiprocessing.Process.__init__(self)
         
         self.video_id = video_id
@@ -139,8 +139,9 @@ class VideoProcessorMP(multiprocessing.Process):
         # Control for auto-restart of video when it finishes
         self.auto_restart = True
         
-        # Store speed limit parameter
-        self.speed_limit = speed_limit
+        # Store speed limit parameters
+        self.max_speed = max_speed
+        self.min_speed = min_speed
         
         # Add property for enabling/disabling detection models
         self.model_settings = {
@@ -290,14 +291,14 @@ class VideoProcessorMP(multiprocessing.Process):
             )
             print(f"[{self.video_id}] Accident detector initialized with dedicated alert manager")
             
-            # Initialize speed detector with the specific stream ID and speed limit
+            # Initialize speed detector with the specific stream ID and speed limits
             self.speed_detector = SpeedDetector(
                 stream_id=self.video_id,
                 violation_manager=self.violation_manager
             )
-            # Set the speed limit after initialization
-            self.speed_detector.set_speed_limit(self.speed_limit)
-            print(f"[{self.video_id}] Speed detector initialized with speed limit: {self.speed_limit} km/h")
+            # Set both maximum and minimum speed limits
+            self.speed_detector.set_speed_limits(self.max_speed, self.min_speed)
+            print(f"[{self.video_id}] Speed detector initialized with speed limits: max={self.max_speed} km/h, min={self.min_speed} km/h")
             
             # Initialize parking detector with the specific stream ID
             self.parking_detector = ParkingDetector(

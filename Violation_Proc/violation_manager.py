@@ -111,10 +111,14 @@ class ViolationManager:
         return self._record_violation(frame, vehicle_id, bbox, "parking", 
                                      extra_info={"duration": duration})
     
-    def record_speed_violation(self, frame, vehicle_id, bbox, speed=None):
-        """Record a speed violation"""
+    def record_speed_violation(self, frame, vehicle_id, bbox, speed=None, violation_type="over_speed"):
+        """Record a speed violation (over-speed or under-speed)"""
+        extra_info = {
+            "speed": speed,
+            "violation_type": violation_type
+        }
         return self._record_violation(frame, vehicle_id, bbox, "speed", 
-                                     extra_info={"speed": speed})
+                                     extra_info=extra_info)
     
     def record_wrong_direction(self, frame, vehicle_id, bbox, line_pair=None):
         """Record a wrong direction violation"""

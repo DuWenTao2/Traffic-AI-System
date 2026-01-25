@@ -19,15 +19,25 @@ if __name__ == '__main__':
     
     # Define video sources - add more or change sources as needed
     video_sources = [
-        # Example configuration for local video file
+        # Example configuration for local video file with bidirectional speed limits
         {
             "id": "video2", 
             "source": r"TestingVideos\test02.mp4",
             "use_stream": False,
             "location": "Test Road Intersection",
             "coordinates": {"lat": 0.0, "lng": 0.0},
-            "speed_limit": 1
+            "max_speed": 50,      # 最高速度限制
+            "min_speed": 10       # 最低速度限制
         },
+        # Example configuration with only max speed (min_speed will use default)
+        # {
+        #     "id": "video3", 
+        #     "source": r"TestingVideos\test03.mp4",
+        #     "use_stream": False,
+        #     "location": "Another Intersection",
+        #     "coordinates": {"lat": 0.0, "lng": 0.0},
+        #     "max_speed": 60      # Only max speed specified
+        # }
         # Example configuration for YouTube stream
         # {
         #     "id": "YouTube Stream", 
@@ -35,7 +45,8 @@ if __name__ == '__main__':
         #     "use_stream": True,
         #     "location": "Downtown Crossing",
         #     "coordinates": {"lat": 0.0, "lng": 0.0},
-        #     "speed_limit": 50
+        #     "max_speed": 50,
+        #     "min_speed": 15
         # }
     ]
     
@@ -60,7 +71,8 @@ if __name__ == '__main__':
                 use_stream=source["use_stream"],
                 camera_location=source.get("location", "Unknown"),
                 coordinates=source.get("coordinates", {"lat": 0.0, "lng": 0.0}),
-                speed_limit=source.get("speed_limit", 60)  # Default to 60 km/h if not specified
+                max_speed=source.get("max_speed", source.get("speed_limit", 60)),  # Use max_speed or fallback to speed_limit or default 60
+                min_speed=source.get("min_speed", 5)  # Default to 5 km/h if not specified
             )
             processors.append(processor)
             processor.start()

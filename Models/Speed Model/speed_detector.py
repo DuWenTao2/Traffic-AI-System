@@ -12,7 +12,8 @@ class SpeedDetector:
         self.smoothing_window = smoothing_window
         self.enabled = False  # Only enable after speed lines are defined
         self.violation_manager = violation_manager
-        self.speed_limit = 1.0  # Set speed limit to 1 km/h
+        self.speed_limit = 10.0  # Maximum speed limit
+        self.min_speed = 5.0    # Minimum speed limit
         
         # Set font style based on parameter
         self.font_style = font_style
@@ -241,8 +242,15 @@ class SpeedDetector:
                         # Create a unique identifier for this vehicle and speed line crossing
                         violation_key = f"{vehicle_id}_{speed_line_id}"
                         
-                        # Record speed violation if over limit (1 km/h) and not already recorded
-                        if avg_speed > self.speed_limit and violation_key not in self.speed_violations:
+                        # Check for speed violations (over or under speed limit)
+                        violation_type = None
+                        if avg_speed > self.speed_limit:
+                            violation_type = "over_speed"
+                        elif avg_speed > 0 and avg_speed < self.min_speed:
+                            violation_type = "under_speed"
+                        
+                        # Record speed violation if any type and not already recorded
+                        if violation_type and violation_key not in self.speed_violations:
                             try:
                                 # Add to violations set to prevent duplicate recordings
                                 self.speed_violations.add(violation_key)
@@ -257,10 +265,15 @@ class SpeedDetector:
                                             self.current_frame, 
                                             vehicle_id, 
                                             bbox,
-                                            speed=avg_speed
+                                            speed=avg_speed,
+                                            violation_type=violation_type
                                         )
-                                        print(f"[{self.stream_id}] Recorded SPEED VIOLATION for vehicle {vehicle_id}: " +
-                                             f"{avg_speed:.1f} km/h (limit: {self.speed_limit} km/h) at line {speed_line_id}")
+                                        if violation_type == "over_speed":
+                                            print(f"[{self.stream_id}] Recorded SPEED VIOLATION for vehicle {vehicle_id}: " +
+                                                 f"{avg_speed:.1f} km/h (above limit: {self.speed_limit} km/h) at line {speed_line_id}")
+                                        else:
+                                            print(f"[{self.stream_id}] Recorded SPEED VIOLATION for vehicle {vehicle_id}: " +
+                                                 f"{avg_speed:.1f} km/h (below limit: {self.min_speed} km/h) at line {speed_line_id}")
                                     else:
                                         # Standalone approach
                                         self._save_violation_snapshot(self.current_frame, bbox, vehicle_id, avg_speed)
@@ -364,6 +377,13 @@ class SpeedDetector:
         """Set the speed limit in km/h"""
         self.speed_limit = float(limit_kmh)
         print(f"[{self.stream_id}] Speed limit set to {self.speed_limit} km/h")
+    
+    def set_speed_limits(self, max_speed, min_speed=None):
+        """Set both maximum and minimum speed limits in km/h"""
+        self.speed_limit = float(max_speed)
+        if min_speed is not None:
+            self.min_speed = float(min_speed)
+        print(f"[{self.stream_id}] Speed limits updated: max={self.speed_limit} km/h, min={self.min_speed} km/h")
     
     def reset_violations(self):
         """Reset the list of recorded speed violations"""
