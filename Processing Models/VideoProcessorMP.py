@@ -161,10 +161,7 @@ class VideoProcessorMP(multiprocessing.Process):
             self.accident_alert_manager = self.violation_manager.accident_alert_manager
             print(f"[{self.video_id}] Accident alert manager accessed from violation manager")
             
-            # Initialize area manager
-            self.area_manager = AreaManager(stream_id=self.video_id)
-
-            # Initialize the video source
+            # Initialize the video source first to get frame dimensions
             self.initialize_source()
             
             # Read first frame to get dimensions
@@ -176,6 +173,89 @@ class VideoProcessorMP(multiprocessing.Process):
             self.original_height, self.original_width = first_frame.shape[:2]
             self.display_width = int(self.original_width * self.display_scale)
             self.display_height = int(self.original_height * self.display_scale)
+            
+            # Initialize area manager with stream ID
+            self.area_manager = AreaManager(stream_id=self.video_id)
+            
+            # Automatically set up full-screen detection area if no areas are defined
+            if AreaType.DETECTION not in self.area_manager.areas or not self.area_manager.areas[AreaType.DETECTION]:
+                # Create a full-screen polygon (entire frame boundaries)
+                full_screen_area = {
+                    'points': [
+                        (0, 0),                                    # Top-left
+                        (self.original_width, 0),                  # Top-right
+                        (self.original_width, self.original_height), # Bottom-right
+                        (0, self.original_height),                 # Bottom-left
+                        (0, 0)                                     # Close polygon
+                    ],
+                    'type': AreaType.DETECTION.name,
+                    'enabled': True,
+                    'properties': {}
+                }
+                if AreaType.DETECTION not in self.area_manager.areas:
+                    self.area_manager.areas[AreaType.DETECTION] = []
+                self.area_manager.areas[AreaType.DETECTION].append(full_screen_area)
+                print(f"[{self.video_id}] Full-screen detection area automatically set up")
+            
+            # Also set up full-screen parking area if none defined
+            if AreaType.PARKING not in self.area_manager.areas or not self.area_manager.areas[AreaType.PARKING]:
+                # Create a full-screen parking polygon (entire frame boundaries)
+                full_screen_parking_area = {
+                    'points': [
+                        (0, 0),                                    # Top-left
+                        (self.original_width, 0),                  # Top-right
+                        (self.original_width, self.original_height), # Bottom-right
+                        (0, self.original_height),                 # Bottom-left
+                        (0, 0)                                     # Close polygon
+                    ],
+                    'type': AreaType.PARKING.name,
+                    'enabled': True,
+                    'properties': {}
+                }
+                if AreaType.PARKING not in self.area_manager.areas:
+                    self.area_manager.areas[AreaType.PARKING] = []
+                self.area_manager.areas[AreaType.PARKING].append(full_screen_parking_area)
+                print(f"[{self.video_id}] Full-screen parking area automatically set up")
+            
+            # Also set up full-screen traffic line area if none defined
+            if AreaType.TRAFFIC_LINE not in self.area_manager.areas or not self.area_manager.areas[AreaType.TRAFFIC_LINE]:
+                # Create a full-screen traffic line polygon (entire frame boundaries)
+                full_screen_traffic_line_area = {
+                    'points': [
+                        (0, 0),                                    # Top-left
+                        (self.original_width, 0),                  # Top-right
+                        (self.original_width, self.original_height), # Bottom-right
+                        (0, self.original_height),                 # Bottom-left
+                        (0, 0)                                     # Close polygon
+                    ],
+                    'type': AreaType.TRAFFIC_LINE.name,
+                    'enabled': True,
+                    'properties': {}
+                }
+                if AreaType.TRAFFIC_LINE not in self.area_manager.areas:
+                    self.area_manager.areas[AreaType.TRAFFIC_LINE] = []
+                self.area_manager.areas[AreaType.TRAFFIC_LINE].append(full_screen_traffic_line_area)
+                print(f"[{self.video_id}] Full-screen traffic line area automatically set up")
+            
+            # Also set up full-screen traffic sign area if none defined
+            if AreaType.TRAFFIC_SIGN not in self.area_manager.areas or not self.area_manager.areas[AreaType.TRAFFIC_SIGN]:
+                # Create a full-screen traffic sign polygon (entire frame boundaries)
+                full_screen_traffic_sign_area = {
+                    'points': [
+                        (0, 0),                                    # Top-left
+                        (self.original_width, 0),                  # Top-right
+                        (self.original_width, self.original_height), # Bottom-right
+                        (0, self.original_height),                 # Bottom-left
+                        (0, 0)                                     # Close polygon
+                    ],
+                    'type': AreaType.TRAFFIC_SIGN.name,
+                    'enabled': True,
+                    'properties': {}
+                }
+                if AreaType.TRAFFIC_SIGN not in self.area_manager.areas:
+                    self.area_manager.areas[AreaType.TRAFFIC_SIGN] = []
+                self.area_manager.areas[AreaType.TRAFFIC_SIGN].append(full_screen_traffic_sign_area)
+                print(f"[{self.video_id}] Full-screen traffic sign area automatically set up")
             
             # Reset video to start
             self.video_reader.reset()
@@ -238,7 +318,7 @@ class VideoProcessorMP(multiprocessing.Process):
             
             # Load YOLO model (each process needs its own model instance)
             print(f"[{self.video_id}] Loading YOLO model...")
-            self.model = YOLO('best.pt')
+            self.model = YOLO('vehicle_kitti_v0_best.pt')
 
             # Main processing loop
             print(f"[{self.video_id}] Starting processing loop...")

@@ -214,8 +214,8 @@ class AreaManager:
         """
         check_area_type = area_type if area_type is not None else self.active_area_type
         
-        if check_area_type not in self.areas:
-            return True  # If no areas defined, consider all points valid
+        if check_area_type not in self.areas or not self.areas[check_area_type]:
+            return True  # If no areas defined, consider all points valid (full screen)
         
         for area in self.areas[check_area_type]:
             if not area.get('enabled', True):
@@ -241,7 +241,7 @@ class AreaManager:
         check_area_type = area_type if area_type is not None else self.active_area_type
         
         if check_area_type not in self.areas or not self.areas[check_area_type]:
-            return True  # If no areas defined, consider all boxes valid
+            return True  # If no areas defined, consider all boxes valid (full screen)
         
         x1, y1, x2, y2 = box
         

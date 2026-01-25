@@ -3,31 +3,146 @@
     {
       "points": [
         [
-          1696,
-          280
+          0,
+          0
         ],
         [
-          123,
-          353
+          854,
+          0
         ],
         [
-          53,
-          700
+          854,
+          480
         ],
         [
-          1895,
-          726
+          0,
+          480
         ],
         [
-          1701,
-          286
-        ],
-        [
-          1696,
-          280
+          0,
+          0
         ]
       ],
       "type": "DETECTION",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "PARKING": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          854,
+          0
+        ],
+        [
+          854,
+          480
+        ],
+        [
+          0,
+          480
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "PARKING",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "TRAFFIC_LINE": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          854,
+          0
+        ],
+        [
+          854,
+          480
+        ],
+        [
+          0,
+          480
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "TRAFFIC_LINE",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "TRAFFIC_SIGN": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          854,
+          0
+        ],
+        [
+          854,
+          480
+        ],
+        [
+          0,
+          480
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "TRAFFIC_SIGN",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "WRONG_DIRECTION": [
+    {
+      "points": [
+        [
+          172,
+          152
+        ],
+        [
+          815,
+          186
+        ]
+      ],
+      "type": "WRONG_DIRECTION",
+      "enabled": true,
+      "properties": {}
+    },
+    {
+      "points": [
+        [
+          72,
+          229
+        ],
+        [
+          801,
+          273
+        ]
+      ],
+      "type": "WRONG_DIRECTION",
       "enabled": true,
       "properties": {}
     }
@@ -36,12 +151,12 @@
     {
       "points": [
         [
-          107,
-          480
+          67,
+          301
         ],
         [
-          1755,
-          398
+          789,
+          330
         ]
       ],
       "type": "SPEED",
