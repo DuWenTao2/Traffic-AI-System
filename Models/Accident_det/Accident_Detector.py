@@ -28,15 +28,13 @@ class AccidentDetector:
         #     'car_bike_accident', 'car_car_accident', 'car_object_accident', 'car_person_accident'
         # ]
 
-        # Dynamically determine accident classes from model
+        # 直接从模型提取类别名称
         if hasattr(self.model, 'names') and self.model.names:
-            # Use all available classes from the model as accident classes
-            model_classes = list(self.model.names.values()) if isinstance(self.model.names, dict) else self.model.names
-            # Normalize class names to lowercase for comparison
-            self.accident_classes = [cls.lower() for cls in model_classes]
+            # 直接使用模型中的类别名称，不转为小写
+            self.accident_classes = list(self.model.names.values()) if isinstance(self.model.names, dict) else self.model.names
         else:
-            # Fallback to default accident class
-            self.accident_classes = ['accident']
+            # 回退到默认事故类别
+            self.accident_classes = ['Accident']
         
         # State management variables
         self.last_alert_time = 0
@@ -143,7 +141,7 @@ class AccidentDetector:
             class_name = results.names[cls]
             
             # Check if this is an accident with sufficient confidence (case-insensitive comparison)
-            if class_name.lower() in self.accident_classes and conf >= self.conf_threshold:
+            if class_name in self.accident_classes and conf >= self.conf_threshold:
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
                 box_center = ((x1 + x2) // 2, (y1 + y2) // 2)
                 box_size = (x2 - x1) * (y2 - y1)  # Box area for signature

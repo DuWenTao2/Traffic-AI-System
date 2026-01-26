@@ -300,7 +300,7 @@ class VideoProcessorMP(multiprocessing.Process):
             self.accident_detector = AccidentDetector(
                 stream_id=self.video_id,
                 accident_alert_manager=self.accident_alert_manager,
-                model_path = "weights/Accident_Detection/accident.pt"
+                model_path = "weights/Accident_Detection/accident_multi.pt"
             )
             print(f"[{self.video_id}] Accident detector initialized with dedicated alert manager")
             

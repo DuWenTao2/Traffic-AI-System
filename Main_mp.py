@@ -22,7 +22,7 @@ if __name__ == '__main__':
         # Example configuration for local video file with bidirectional speed limits
         {
             "id": "video2", 
-            "source": r"TestingVideos\test06.mp4",
+            "source": r"TestingVideos\test05.mp4",
             "use_stream": False,
             "location": "Test Road Intersection",
             "coordinates": {"lat": 0.0, "lng": 0.0},
