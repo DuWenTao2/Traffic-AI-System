@@ -14,6 +14,7 @@ class AreaType(Enum):
     TRAFFIC_LINE = auto()     # Traffic line detection
     TRAFFIC_SIGN = auto()     # Traffic sign recognition
     ILLEGAL_CROSSING = auto() # Illegal crossing detection area
+    EMERGENCY_LANE = auto()   # Emergency lane area
     CUSTOM = auto()           # Custom area type
 
 class AreaManager:
@@ -35,6 +36,7 @@ class AreaManager:
             AreaType.TRAFFIC_LINE: (255, 0, 255),  # Magenta
             AreaType.TRAFFIC_SIGN: (0, 255, 255),  # Cyan
             AreaType.ILLEGAL_CROSSING: (255, 165, 0), # Orange
+            AreaType.EMERGENCY_LANE: (139, 0, 0),  # Dark Red
             AreaType.CUSTOM: (128, 128, 128)       # Gray
         }
         
@@ -133,6 +135,9 @@ class AreaManager:
             return True
         elif key == ord('8'):
             self.set_active_area_type(AreaType.CUSTOM)
+            return True
+        elif key == ord('9'):
+            self.set_active_area_type(AreaType.EMERGENCY_LANE)
             return True
         elif key == ord('c'):  # Clear current area type
             if self.active_area_type in self.areas:

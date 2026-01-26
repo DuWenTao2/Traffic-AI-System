@@ -77,7 +77,7 @@ class ViolationManager:
         # A single directory for all violation types with no date or camera subfolders
         self.violation_dirs = {}
         for violation_type in ["parking", "speed", "wrong_direction", 
-                              "traffic_light", "helmet"]:
+                              "traffic_light", "helmet", "illegal_crossing", "emergency_lane"]:
             # Instead of creating type-specific folders, just point all types to the same snapshots directory
             self.violation_dirs[violation_type] = self.snapshots_dir
         
@@ -147,6 +147,11 @@ class ViolationManager:
     def record_helmet_violation(self, frame, vehicle_id, bbox, vehicle_type=None):
         """Record a helmet violation"""
         return self._record_violation(frame, vehicle_id, bbox, "helmet", 
+                                     extra_info={"vehicle_type": vehicle_type})
+    
+    def record_emergency_lane_violation(self, frame, vehicle_id, bbox, vehicle_type=None):
+        """Record an emergency lane violation"""
+        return self._record_violation(frame, vehicle_id, bbox, "emergency_lane", 
                                      extra_info={"vehicle_type": vehicle_type})
     
     def _record_violation(self, frame, vehicle_id, bbox, violation_type,

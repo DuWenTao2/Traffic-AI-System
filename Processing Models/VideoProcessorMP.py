@@ -49,6 +49,10 @@ illegal_crossing_dir = os.path.join(models_dir, "IllegalCrossing")
 if illegal_crossing_dir not in sys.path:
     sys.path.append(illegal_crossing_dir)
 
+emergency_lane_dir = os.path.join(models_dir, "EmergencyLane")
+if emergency_lane_dir not in sys.path:
+    sys.path.append(emergency_lane_dir)
+
 # Add Violation_Proc directory for the unified violation manager
 violation_proc_dir = os.path.join(current_dir, "Violation_Proc")
 if violation_proc_dir not in sys.path:
@@ -104,6 +108,13 @@ illegal_crossing_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(illegal_crossing_module)
 IllegalCrossingDetector = illegal_crossing_module.IllegalCrossingDetector
 
+# Import EmergencyLaneDetector module
+emergency_lane_module_path = os.path.join(emergency_lane_dir, "emergency_lane_detector.py")
+spec = importlib.util.spec_from_file_location("emergency_lane_detector", emergency_lane_module_path)
+emergency_lane_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(emergency_lane_module)
+EmergencyLaneDetector = emergency_lane_module.EmergencyLaneDetector
+
 # Import violation management modules  
 from Violation_Proc.violation_manager import ViolationManager
 from Violation_Proc.accident_alert_manager import AccidentAlertManager
@@ -151,7 +162,8 @@ class VideoProcessorMP(multiprocessing.Process):
             "speed_detection": True,
             "parking_detection": True,
             "wrong_direction": True,
-            "illegal_crossing": True
+            "illegal_crossing": True,
+            "emergency_lane": True
         }
     
     def run(self):
@@ -336,6 +348,13 @@ class VideoProcessorMP(multiprocessing.Process):
             )
             print(f"[{self.video_id}] Illegal crossing detector initialized")
             
+            # Initialize emergency lane detector
+            self.emergency_lane_detector = EmergencyLaneDetector(
+                stream_id=self.video_id,
+                violation_manager=self.violation_manager
+            )
+            print(f"[{self.video_id}] Emergency lane detector initialized")
+            
             # Load YOLO model (each process needs its own model instance)
             print(f"[{self.video_id}] Loading YOLO model...")
             self.model = YOLO('yolov8s.pt')
@@ -513,6 +532,22 @@ class VideoProcessorMP(multiprocessing.Process):
                             print(f"[{self.video_id}] Error in illegal crossing detection (full screen): {str(e)}")
                             import traceback
                             traceback.print_exc()
+                
+                # Run emergency lane detection if enabled
+                if self.model_settings.get("emergency_lane", True):
+                    # Check if we have any emergency lane areas defined
+                    if AreaType.EMERGENCY_LANE in self.area_manager.areas and len(self.area_manager.areas[AreaType.EMERGENCY_LANE]) > 0:
+                        # Process emergency lane violations
+                        try:
+                            processed_frame = self.emergency_lane_detector.process_objects(
+                                processed_frame, self.tracked_objects, self.area_manager)
+                        except Exception as e:
+                            print(f"[{self.video_id}] Error in emergency lane detection: {str(e)}")
+                            import traceback
+                            traceback.print_exc()
+                    else:
+                        # If no emergency lane areas defined, skip detection
+                        pass
                 
                 # Draw all areas on the frame
                 processed_frame = self.area_manager.draw_areas(processed_frame)
