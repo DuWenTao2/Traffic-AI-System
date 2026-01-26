@@ -4,6 +4,57 @@ import time
 import os
 from datetime import datetime
 
+class KalmanFilter:
+    """
+    Kalman Filter implementation for vehicle speed estimation
+    Used to reduce measurement noise and improve speed accuracy
+    """
+    def __init__(self, initial_speed=0.0, process_noise=0.1, measurement_noise=1.0, error_covariance=1.0):
+        # State vector [speed]
+        self.x = np.array([[initial_speed]])
+        
+        # State transition matrix
+        self.F = np.array([[1.0]])
+        
+        # Measurement matrix
+        self.H = np.array([[1.0]])
+        
+        # Process noise covariance
+        self.Q = np.array([[process_noise]])
+        
+        # Measurement noise covariance
+        self.R = np.array([[measurement_noise]])
+        
+        # Error covariance matrix
+        self.P = np.array([[error_covariance]])
+    
+    def predict(self):
+        # Predict next state
+        self.x = np.dot(self.F, self.x)
+        
+        # Update error covariance
+        self.P = np.dot(np.dot(self.F, self.P), self.F.T) + self.Q
+        
+        return self.x[0, 0]
+    
+    def update(self, measurement):
+        # Calculate Kalman gain
+        S = np.dot(np.dot(self.H, self.P), self.H.T) + self.R
+        K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
+        
+        # Update state estimate
+        measurement = np.array([[measurement]])
+        self.x = self.x + np.dot(K, (measurement - np.dot(self.H, self.x)))
+        
+        # Update error covariance
+        I = np.eye(self.F.shape[0])
+        self.P = np.dot((I - np.dot(K, self.H)), self.P)
+        
+        return self.x[0, 0]
+    
+    def get_current_state(self):
+        return self.x[0, 0]
+
 class SpeedDetector:
     def __init__(self, stream_id="default", pixels_per_meter=30, smoothing_window=10, font_style="plain", violation_manager=None):
        
@@ -30,6 +81,12 @@ class SpeedDetector:
         self.vehicles = {}  # Store vehicle position history
         self.speeds = {}    # Store calculated speeds
         self.recorded_speeds = {}  # Store speeds recorded at the measurement line
+        self.speed_filters = {}  # Store Kalman filters for each vehicle
+        self.kalman_config = {
+            'process_noise': 0.1,
+            'measurement_noise': 1.0,
+            'error_covariance': 1.0
+        }
         
         # Fixed time step for more consistent speed calculation (33.33ms = ~30 FPS)
         self.fixed_time_step = 1.0 / 30.0  # Fixed time step in seconds
@@ -79,12 +136,17 @@ class SpeedDetector:
             
             # Initialize tracking for new vehicles
             if obj_id not in self.vehicles:
+                # Create Kalman filter for this vehicle
+                if obj_id not in self.speed_filters:
+                    self.speed_filters[obj_id] = KalmanFilter(**self.kalman_config)
+                
                 self.vehicles[obj_id] = {
                     'positions': track_data['center_points'].copy(),  # Copy existing points
                     'timestamps': [current_time - self.fixed_time_step * i for i in range(len(track_data['center_points'])-1, -1, -1)],
                     'speeds': [],     # List of calculated speeds
                     'last_speed': 0,  # Last stable speed
                     'crossed_lines': set(),  # Lines already crossed (copy from tracked_objects)
+                    'line_speeds': {},  # Store speeds from each crossed line
                 }
                 if 'crossed_lines' in track_data:
                     self.vehicles[obj_id]['crossed_lines'] = track_data['crossed_lines'].copy()
@@ -170,6 +232,10 @@ class SpeedDetector:
                 del self.vehicles[vehicle_id]
             if vehicle_id in self.speeds:
                 del self.speeds[vehicle_id]
+            if vehicle_id in self.speed_filters:
+                del self.speed_filters[vehicle_id]
+            if vehicle_id in self.recorded_speeds:
+                del self.recorded_speeds[vehicle_id]
                 
         return frame
     
@@ -223,30 +289,54 @@ class SpeedDetector:
                 self.vehicles[vehicle_id]['speeds'].append(speed_kmh)
                 self.vehicles[vehicle_id]['last_speed'] = speed_kmh
                 
+                # Apply Kalman Filter to improve speed accuracy
+                if vehicle_id in self.speed_filters:
+                    # Predict next state
+                    self.speed_filters[vehicle_id].predict()
+                    # Update with measurement
+                    filtered_speed = self.speed_filters[vehicle_id].update(speed_kmh)
+                else:
+                    # Fallback if Kalman filter not available
+                    filtered_speed = speed_kmh
+                
                 # Apply smoothing - calculate weighted average of recent speed measurements
                 # Use exponential weighting to favor more recent measurements
                 window_size = min(self.smoothing_window, len(self.vehicles[vehicle_id]['speeds']))
                 if window_size > 0:
                     weights = np.exp(np.linspace(0, 1, window_size))
                     weighted_speeds = np.array(self.vehicles[vehicle_id]['speeds'][-window_size:]) * weights
-                    avg_speed = weighted_speeds.sum() / weights.sum()
+                    smoothed_speed = weighted_speeds.sum() / weights.sum()
                     
-                    # Update speed for display
-                    self.speeds[vehicle_id] = avg_speed
+                    # Combine smoothed speed with Kalman filtered speed for best results
+                    final_speed = (smoothed_speed + filtered_speed) / 2
                     
-                    # If this was a speed line crossing, record the speed
+                    # If this was a speed line crossing, record the speed for this line
                     if speed_line_id is not None:
-                        self.recorded_speeds[vehicle_id] = avg_speed
-                        print(f"[{self.stream_id}] Vehicle {vehicle_id} speed at line {speed_line_id}: {avg_speed:.1f} km/h")
+                        # Store speed for this specific line
+                        self.vehicles[vehicle_id]['line_speeds'][speed_line_id] = final_speed
+                        
+                        # Calculate multi-line speed using all crossed lines
+                        all_line_speeds = list(self.vehicles[vehicle_id]['line_speeds'].values())
+                        if len(all_line_speeds) > 0:
+                            # Use median speed for better robustness against outliers
+                            multi_line_speed = np.median(all_line_speeds)
+                        else:
+                            multi_line_speed = final_speed
+                        
+                        # Update speed for display and recording
+                        self.speeds[vehicle_id] = multi_line_speed
+                        self.recorded_speeds[vehicle_id] = multi_line_speed
+                        
+                        print(f"[{self.stream_id}] Vehicle {vehicle_id} speed at line {speed_line_id}: {final_speed:.1f} km/h (multi-line: {multi_line_speed:.1f} km/h)")
                         
                         # Create a unique identifier for this vehicle and speed line crossing
                         violation_key = f"{vehicle_id}_{speed_line_id}"
                         
-                        # Check for speed violations (over or under speed limit)
+                        # Check for speed violations (over or under speed limit) using multi-line speed
                         violation_type = None
-                        if avg_speed > self.speed_limit:
+                        if multi_line_speed > self.speed_limit:
                             violation_type = "over_speed"
-                        elif avg_speed > 0 and avg_speed < self.min_speed:
+                        elif multi_line_speed > 0 and multi_line_speed < self.min_speed:
                             violation_type = "under_speed"
                         
                         # Record speed violation if any type and not already recorded
@@ -265,20 +355,23 @@ class SpeedDetector:
                                             self.current_frame, 
                                             vehicle_id, 
                                             bbox,
-                                            speed=avg_speed,
+                                            speed=multi_line_speed,
                                             violation_type=violation_type
                                         )
                                         if violation_type == "over_speed":
                                             print(f"[{self.stream_id}] Recorded SPEED VIOLATION for vehicle {vehicle_id}: " +
-                                                 f"{avg_speed:.1f} km/h (above limit: {self.speed_limit} km/h) at line {speed_line_id}")
+                                                 f"{multi_line_speed:.1f} km/h (above limit: {self.speed_limit} km/h) at line {speed_line_id}")
                                         else:
                                             print(f"[{self.stream_id}] Recorded SPEED VIOLATION for vehicle {vehicle_id}: " +
-                                                 f"{avg_speed:.1f} km/h (below limit: {self.min_speed} km/h) at line {speed_line_id}")
+                                                 f"{multi_line_speed:.1f} km/h (below limit: {self.min_speed} km/h) at line {speed_line_id}")
                                     else:
                                         # Standalone approach
-                                        self._save_violation_snapshot(self.current_frame, bbox, vehicle_id, avg_speed)
+                                        self._save_violation_snapshot(self.current_frame, bbox, vehicle_id, multi_line_speed)
                             except Exception as e:
                                 print(f"[{self.stream_id}] Error recording speed violation: {str(e)}")
+                    else:
+                        # Update speed for display using Kalman filtered speed
+                        self.speeds[vehicle_id] = final_speed
 
     def _get_vehicle_bbox(self, vehicle_id):
         """Get the vehicle's bounding box from multiple possible sources"""

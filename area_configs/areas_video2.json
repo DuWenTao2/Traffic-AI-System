@@ -1,116 +1,32 @@
 {
-  "DETECTION": [
+  "SPEED": [
     {
       "points": [
         [
-          0,
-          0
+          41,
+          347
         ],
         [
-          1280,
-          0
-        ],
-        [
-          1280,
-          720
-        ],
-        [
-          0,
-          720
-        ],
-        [
-          0,
-          0
+          490,
+          352
         ]
       ],
-      "type": "DETECTION",
+      "type": "SPEED",
       "enabled": true,
       "properties": {}
-    }
-  ],
-  "PARKING": [
+    },
     {
       "points": [
         [
-          0,
-          0
+          138,
+          129
         ],
         [
-          1280,
-          0
-        ],
-        [
-          1280,
-          720
-        ],
-        [
-          0,
-          720
-        ],
-        [
-          0,
-          0
+          478,
+          143
         ]
       ],
-      "type": "PARKING",
-      "enabled": true,
-      "properties": {}
-    }
-  ],
-  "TRAFFIC_LINE": [
-    {
-      "points": [
-        [
-          0,
-          0
-        ],
-        [
-          1280,
-          0
-        ],
-        [
-          1280,
-          720
-        ],
-        [
-          0,
-          720
-        ],
-        [
-          0,
-          0
-        ]
-      ],
-      "type": "TRAFFIC_LINE",
-      "enabled": true,
-      "properties": {}
-    }
-  ],
-  "TRAFFIC_SIGN": [
-    {
-      "points": [
-        [
-          0,
-          0
-        ],
-        [
-          1280,
-          0
-        ],
-        [
-          1280,
-          720
-        ],
-        [
-          0,
-          720
-        ],
-        [
-          0,
-          0
-        ]
-      ],
-      "type": "TRAFFIC_SIGN",
+      "type": "SPEED",
       "enabled": true,
       "properties": {}
     }
@@ -119,12 +35,12 @@
     {
       "points": [
         [
-          495,
-          398
+          353,
+          292
         ],
         [
-          1249,
-          381
+          472,
+          300
         ]
       ],
       "type": "WRONG_DIRECTION",
@@ -134,32 +50,15 @@
     {
       "points": [
         [
-          423,
-          498
+          361,
+          221
         ],
         [
-          1275,
-          458
+          473,
+          221
         ]
       ],
       "type": "WRONG_DIRECTION",
-      "enabled": true,
-      "properties": {}
-    }
-  ],
-  "SPEED": [
-    {
-      "points": [
-        [
-          584,
-          318
-        ],
-        [
-          1106,
-          315
-        ]
-      ],
-      "type": "SPEED",
       "enabled": true,
       "properties": {}
     }
@@ -168,28 +67,28 @@
     {
       "points": [
         [
-          566,
-          324
+          643,
+          221
         ],
         [
-          436,
-          550
+          584,
+          361
         ],
         [
-          727,
-          583
+          836,
+          423
         ],
         [
-          690,
-          306
+          847,
+          241
         ],
         [
-          564,
-          326
+          644,
+          221
         ],
         [
-          566,
-          324
+          643,
+          221
         ]
       ],
       "type": "EMERGENCY_LANE",
