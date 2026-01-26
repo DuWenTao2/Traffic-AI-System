@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "date": "2026-01-26",
+    "time": "22:21:11",
+    "camera_id": "video2",
+    "camera_location": "Test Road Intersection",
+    "coordinates": {
+      "lat": 0.0,
+      "lng": 0.0
+    },
+    "latitude": 0.0,
+    "longitude": 0.0,
+    "accident_id": "accident_video2_1769437271",
+    "snapshot_paths": {
+      "closeup": "snapshots\\accident_accident_video2_1769437271_222111.jpg"
+    }
+  }
+]

@@ -156,7 +156,7 @@ class VideoProcessorMP(multiprocessing.Process):
         
         # Add property for enabling/disabling detection models
         self.model_settings = {
-            "accident_detection": False,
+            "accident_detection": True,
             "helmet_detection": False,
             "traffic_violation": False, 
             "speed_detection": True,
@@ -299,7 +299,8 @@ class VideoProcessorMP(multiprocessing.Process):
             # Initialize accident detector with the dedicated accident alert manager
             self.accident_detector = AccidentDetector(
                 stream_id=self.video_id,
-                accident_alert_manager=self.accident_alert_manager
+                accident_alert_manager=self.accident_alert_manager,
+                model_path = "weights/Accident_Detection/accident.pt"
             )
             print(f"[{self.video_id}] Accident detector initialized with dedicated alert manager")
             
@@ -357,7 +358,7 @@ class VideoProcessorMP(multiprocessing.Process):
             
             # Load YOLO model (each process needs its own model instance)
             print(f"[{self.video_id}] Loading YOLO model...")
-            self.model = YOLO('yolov8s.pt')
+            self.model = YOLO('weights/Vehicle_Detection/yolov8s.pt')
 
             # Main processing loop
             print(f"[{self.video_id}] Starting processing loop...")

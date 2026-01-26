@@ -10,7 +10,7 @@ import os
 from collections import deque
 
 class AccidentDetector:
-    def __init__(self, stream_id="default", model_path=None, conf_threshold=0.86, cooldown=35, frame_skip=3, accident_alert_manager=None):
+    def __init__(self, stream_id="default", model_path=None, conf_threshold=0.3, cooldown=35, frame_skip=3, accident_alert_manager=None):
         
         # Initialize accident model path
         if model_path is None:
@@ -23,10 +23,20 @@ class AccidentDetector:
         self.conf_threshold = conf_threshold
         self.cooldown = cooldown  # Cooldown period in seconds
         self.frame_skip = frame_skip
-        self.accident_classes = [
-            'bike_bike_accident', 'bike_object_accident', 'bike_person_accident',
-            'car_bike_accident', 'car_car_accident', 'car_object_accident', 'car_person_accident'
-        ]
+        # self.accident_classes = [
+        #     'bike_bike_accident', 'bike_object_accident', 'bike_person_accident',
+        #     'car_bike_accident', 'car_car_accident', 'car_object_accident', 'car_person_accident'
+        # ]
+
+        # Dynamically determine accident classes from model
+        if hasattr(self.model, 'names') and self.model.names:
+            # Use all available classes from the model as accident classes
+            model_classes = list(self.model.names.values()) if isinstance(self.model.names, dict) else self.model.names
+            # Normalize class names to lowercase for comparison
+            self.accident_classes = [cls.lower() for cls in model_classes]
+        else:
+            # Fallback to default accident class
+            self.accident_classes = ['accident']
         
         # State management variables
         self.last_alert_time = 0
@@ -132,8 +142,8 @@ class AccidentDetector:
             conf = float(box.conf)
             class_name = results.names[cls]
             
-            # Check if this is an accident with sufficient confidence
-            if class_name in self.accident_classes and conf >= self.conf_threshold:
+            # Check if this is an accident with sufficient confidence (case-insensitive comparison)
+            if class_name.lower() in self.accident_classes and conf >= self.conf_threshold:
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
                 box_center = ((x1 + x2) // 2, (y1 + y2) // 2)
                 box_size = (x2 - x1) * (y2 - y1)  # Box area for signature
