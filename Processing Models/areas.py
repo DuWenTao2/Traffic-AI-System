@@ -113,31 +113,31 @@ class AreaManager:
             
         # Number keys 1-8 to select area type
         if key == ord('1'):
-            self.set_active_area_type(AreaType.DETECTION)
+            self.set_active_area_type(AreaType.DETECTION) #检测区域
             return True
         elif key == ord('2'):
-            self.set_active_area_type(AreaType.SPEED)
+            self.set_active_area_type(AreaType.SPEED) #速度检测线
             return True
         elif key == ord('3'):
-            self.set_active_area_type(AreaType.WRONG_DIRECTION)
+            self.set_active_area_type(AreaType.WRONG_DIRECTION) #错误方向
             return True
         elif key == ord('4'):
-            self.set_active_area_type(AreaType.PARKING)
+            self.set_active_area_type(AreaType.EMERGENCY_LANE) # 紧急车道区域
             return True
         elif key == ord('5'):
-            self.set_active_area_type(AreaType.TRAFFIC_LINE)
+            self.set_active_area_type(AreaType.ILLEGAL_CROSSING) # 违规 crossings区域
             return True
         elif key == ord('6'):
-            self.set_active_area_type(AreaType.TRAFFIC_SIGN)
+            self.set_active_area_type(AreaType.TRAFFIC_SIGN) # 红绿灯检测
             return True
         elif key == ord('7'):
-            self.set_active_area_type(AreaType.ILLEGAL_CROSSING)
+            self.set_active_area_type(AreaType.TRAFFIC_LINE) #红绿灯检测时不可穿越的交通线
             return True
         elif key == ord('8'):
             self.set_active_area_type(AreaType.CUSTOM)
             return True
         elif key == ord('9'):
-            self.set_active_area_type(AreaType.EMERGENCY_LANE)
+            self.set_active_area_type(AreaType.PARKING)
             return True
         elif key == ord('c'):  # Clear current area type
             if self.active_area_type in self.areas:
@@ -153,6 +153,16 @@ class AreaManager:
             self.temp_points = []
             self.temp_point = None
             print(f"[{self.stream_id}] Reset current area definition")
+            return True
+        elif key == ord('d'):  # Clear all drawn lines and areas
+            # Clear all areas
+            self.areas = {}
+            # Reset drawing state
+            self.is_defining_area = False
+            self.temp_points = []
+            self.temp_point = None
+            self.save_areas()
+            print(f"[{self.stream_id}] Cleared all drawn lines and areas")
             return True
             
         return True
