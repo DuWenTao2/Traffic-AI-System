@@ -70,16 +70,18 @@ class ViolationManager:
         # Main violations directory 
         self.base_dir.mkdir(exist_ok=True)
         
-        # Create a single snapshots directory for all violation types
+        # Create main snapshots directory
         self.snapshots_dir = self.base_dir / "snapshots"
         self.snapshots_dir.mkdir(exist_ok=True)
         
-        # A single directory for all violation types with no date or camera subfolders
+        # Create type-specific subdirectories for each violation type
         self.violation_dirs = {}
         for violation_type in ["parking", "speed", "wrong_direction", 
                               "traffic_light", "helmet", "illegal_crossing", "emergency_lane"]:
-            # Instead of creating type-specific folders, just point all types to the same snapshots directory
-            self.violation_dirs[violation_type] = self.snapshots_dir
+            # Create type-specific folder inside snapshots directory
+            type_dir = self.snapshots_dir / violation_type
+            type_dir.mkdir(exist_ok=True)
+            self.violation_dirs[violation_type] = type_dir
         
         # Add plates directory - single directory with no date subfolders
         self.plates_dir = self.base_dir / "plates"
@@ -909,11 +911,13 @@ class ViolationManager:
         try:
             # Generate filename with timestamp
             timestamp_str = datetime.now().strftime('%H%M%S')
-            # All violations now go to the same snapshots directory
+            
+            # Get the specific directory for this violation type
+            violation_dir = self.violation_dirs.get(violation_type, self.snapshots_dir)
             
             # For violations where we want full frame, save it
             if save_full_frame:
-                full_path = self.snapshots_dir / f"{violation_type}_full_{violation_id}_{timestamp_str}.jpg"
+                full_path = violation_dir / f"{violation_type}_full_{violation_id}_{timestamp_str}.jpg"
                 cv2.imwrite(str(full_path), frame)
                 return str(full_path.relative_to(self.base_dir))
             
@@ -941,14 +945,13 @@ class ViolationManager:
                     cv2.putText(vehicle_img, violation_text, 
                               (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)  # Font thickness set to 1
                     
-                    # Save vehicle closeup image - use simplified ID in filename
-                    # All violation types go into the same directory now
-                    closeup_path = self.snapshots_dir / f"{violation_type}_vehicle_{violation_id}_{timestamp_str}.jpg"
+                    # Save vehicle closeup image to type-specific directory
+                    closeup_path = violation_dir / f"{violation_type}_vehicle_{violation_id}_{timestamp_str}.jpg"
                     cv2.imwrite(str(closeup_path), vehicle_img)
                     return str(closeup_path.relative_to(self.base_dir))
         
-            # Fallback if bbox is invalid - save full frame
-            full_path = self.snapshots_dir / f"{violation_type}_fallback_{violation_id}_{timestamp_str}.jpg"
+            # Fallback if bbox is invalid - save full frame to type-specific directory
+            full_path = violation_dir / f"{violation_type}_fallback_{violation_id}_{timestamp_str}.jpg"
             cv2.imwrite(str(full_path), frame)
             return str(full_path.relative_to(self.base_dir))
         
