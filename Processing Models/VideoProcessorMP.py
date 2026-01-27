@@ -115,6 +115,14 @@ emergency_lane_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(emergency_lane_module)
 EmergencyLaneDetector = emergency_lane_module.EmergencyLaneDetector
 
+# Add LaneDetection directory
+lane_detection_dir = os.path.join(models_dir, "LaneDetection")
+if lane_detection_dir not in sys.path:
+    sys.path.append(lane_detection_dir)
+
+# Import LaneDetector module
+from lane_detector import LaneDetector
+
 # Import violation management modules  
 from Violation_Proc.violation_manager import ViolationManager
 from Violation_Proc.accident_alert_manager import AccidentAlertManager
@@ -163,7 +171,8 @@ class VideoProcessorMP(multiprocessing.Process):
             "parking_detection": True,
             "wrong_direction": True,
             "illegal_crossing": True,
-            "emergency_lane": True
+            "emergency_lane": True,
+            "lane_detection": True
         }
     
     def run(self):
@@ -355,6 +364,10 @@ class VideoProcessorMP(multiprocessing.Process):
                 violation_manager=self.violation_manager
             )
             print(f"[{self.video_id}] Emergency lane detector initialized")
+            
+            # Initialize lane detector
+            self.lane_detector = LaneDetector(stream_id=self.video_id)
+            print(f"[{self.video_id}] Lane detector initialized")
             
             # Load YOLO model (each process needs its own model instance)
             print(f"[{self.video_id}] Loading YOLO model...")
@@ -550,6 +563,16 @@ class VideoProcessorMP(multiprocessing.Process):
                         # If no emergency lane areas defined, skip detection
                         pass
                 
+                # Run lane detection if enabled
+                if self.model_settings.get("lane_detection", True):
+                    # Process lane detection
+                    try:
+                        lanes, processed_frame = self.lane_detector.detect_lanes(processed_frame)
+                    except Exception as e:
+                        print(f"[{self.video_id}] Error in lane detection: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
+                
                 # Draw all areas on the frame
                 processed_frame = self.area_manager.draw_areas(processed_frame)
                 
@@ -609,6 +632,12 @@ class VideoProcessorMP(multiprocessing.Process):
                     self.model_settings["illegal_crossing"] = not self.model_settings["illegal_crossing"]
                     status = "ENABLED" if self.model_settings["illegal_crossing"] else "DISABLED"
                     print(f"[{self.video_id}] Illegal crossing detection {status}")
+                
+                # Handle lane detection toggle
+                if key == ord('z'):
+                    self.model_settings["lane_detection"] = not self.model_settings["lane_detection"]
+                    status = "ENABLED" if self.model_settings["lane_detection"] else "DISABLED"
+                    print(f"[{self.video_id}] Lane detection {status}")
                 
                 # Handle display scaling controls
                 if key == ord('+') or key == ord('='):
