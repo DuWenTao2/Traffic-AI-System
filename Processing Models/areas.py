@@ -9,12 +9,14 @@ class AreaType(Enum):
     """Enum for different types of areas/ROIs"""
     DETECTION = auto()        # Object detection area
     SPEED = auto()            # Speed recognition lines
-    WRONG_DIRECTION = auto()  # Wrong direction lines
     PARKING = auto()          # Parking ROI
     TRAFFIC_LINE = auto()     # Traffic line detection
     TRAFFIC_SIGN = auto()     # Traffic sign recognition
     ILLEGAL_CROSSING = auto() # Illegal crossing detection area
     EMERGENCY_LANE = auto()   # Emergency lane area
+    LEFT_LANE = auto()        # Left lane line
+    CENTER_LANE = auto()      # Center lane line
+    RIGHT_LANE = auto()       # Right lane line
     CUSTOM = auto()           # Custom area type
 
 class AreaManager:
@@ -31,14 +33,21 @@ class AreaManager:
         self.area_colors = {
             AreaType.DETECTION: (0, 255, 0),       # Green
             AreaType.SPEED: (255, 0, 0),           # Red
-            AreaType.WRONG_DIRECTION: (0, 0, 255), # Blue
             AreaType.PARKING: (255, 255, 0),       # Yellow
             AreaType.TRAFFIC_LINE: (255, 0, 255),  # Magenta
             AreaType.TRAFFIC_SIGN: (0, 255, 255),  # Cyan
             AreaType.ILLEGAL_CROSSING: (255, 165, 0), # Orange
             AreaType.EMERGENCY_LANE: (139, 0, 0),  # Dark Red
+            AreaType.LEFT_LANE: (0, 128, 255),     # Light Blue
+            AreaType.CENTER_LANE: (255, 128, 0),   # Orange
+            AreaType.RIGHT_LANE: (0, 255, 128),    # Light Green
             AreaType.CUSTOM: (128, 128, 128)       # Gray
         }
+        
+        # Lane drawing state
+        self.is_lane_drawing_mode = False
+        self.lane_drawing_sequence = [AreaType.LEFT_LANE, AreaType.CENTER_LANE, AreaType.RIGHT_LANE]
+        self.current_lane_index = 0
         
         # Load existing area configurations
         self.load_areas()
@@ -90,7 +99,7 @@ class AreaManager:
                 self.temp_point = None
                 self.save_areas()
                 print(f"[{self.stream_id}] Completed {self.active_area_type.name} area definition")
-            elif len(self.temp_points) == 2 and self.active_area_type in [AreaType.SPEED, AreaType.WRONG_DIRECTION, AreaType.TRAFFIC_LINE]:
+            elif len(self.temp_points) == 2:
                 # For line-based areas, 2 points are enough
                 self.areas[self.active_area_type].append({
                     'points': self.temp_points.copy(),
@@ -103,6 +112,18 @@ class AreaManager:
                 self.temp_point = None
                 self.save_areas()
                 print(f"[{self.stream_id}] Completed {self.active_area_type.name} line definition")
+                
+                # Check if we're in lane drawing mode and need to move to next lane
+                if self.is_lane_drawing_mode:
+                    self.current_lane_index += 1
+                    if self.current_lane_index < len(self.lane_drawing_sequence):
+                        # Move to next lane in sequence
+                        self.active_area_type = self.lane_drawing_sequence[self.current_lane_index]
+                        print(f"[{self.stream_id}] Now draw {self.active_area_type.name}")
+                    else:
+                        # Completed all lanes
+                        self.is_lane_drawing_mode = False
+                        print(f"[{self.stream_id}] Completed all lane line definitions")
             else:
                 print(f"[{self.stream_id}] Need at least 3 points for a polygon area or 2 points for a line")
     
@@ -119,7 +140,11 @@ class AreaManager:
             self.set_active_area_type(AreaType.SPEED) #速度检测线
             return True
         elif key == ord('3'):
-            self.set_active_area_type(AreaType.WRONG_DIRECTION) #错误方向
+            # Start lane line drawing sequence
+            self.is_lane_drawing_mode = True
+            self.current_lane_index = 0
+            self.active_area_type = self.lane_drawing_sequence[self.current_lane_index]
+            print(f"[{self.stream_id}] Started lane line drawing sequence - Begin with {self.active_area_type.name}")
             return True
         elif key == ord('4'):
             self.set_active_area_type(AreaType.EMERGENCY_LANE) # 紧急车道区域
@@ -139,6 +164,7 @@ class AreaManager:
         elif key == ord('9'):
             self.set_active_area_type(AreaType.PARKING)
             return True
+        # Removed individual lane line keys (0, -, =) as they're now handled by the sequence
         elif key == ord('c'):  # Clear current area type
             if self.active_area_type in self.areas:
                 self.areas[self.active_area_type] = []
@@ -211,11 +237,17 @@ class AreaManager:
         
         # Add instructions
         if self.is_defining_area:
-            text = f"Defining {self.active_area_type.name} area - Left-click: Add point, Right-click: Complete, 'r': Reset"
+            if self.is_lane_drawing_mode:
+                text = f"Lane Drawing Mode - Currently drawing: {self.active_area_type.name} - Left-click: Add point, Right-click: Complete"
+            else:
+                text = f"Defining {self.active_area_type.name} area - Left-click: Add point, Right-click: Complete, 'r': Reset"
             cv2.putText(frame, text, (10, frame.shape[0] - 20), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
         else:
-            text = f"Active area type: {self.active_area_type.name} - Press 1-7 to change, Left-click to start, 'd' to clear all"
+            if self.is_lane_drawing_mode:
+                text = f"Lane Drawing Mode - Next: {self.active_area_type.name} - Press Left-click to start, 'r': Reset"
+            else:
+                text = f"Active area type: {self.active_area_type.name} - Press 1-7 to change, Left-click to start, 'd' to clear all"
             cv2.putText(frame, text, (10, frame.shape[0] - 20),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
         

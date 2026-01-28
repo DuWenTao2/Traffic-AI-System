@@ -1,148 +1,51 @@
 {
-  "DETECTION": [
+  "LEFT_LANE": [
     {
       "points": [
         [
-          0,
-          0
+          602,
+          308
         ],
         [
-          854,
-          0
-        ],
-        [
-          854,
-          480
-        ],
-        [
-          0,
-          480
-        ],
-        [
-          0,
-          0
+          404,
+          669
         ]
       ],
-      "type": "DETECTION",
+      "type": "LEFT_LANE",
       "enabled": true,
       "properties": {}
     }
   ],
-  "PARKING": [
+  "CENTER_LANE": [
     {
       "points": [
         [
-          0,
-          0
+          658,
+          311
         ],
         [
-          854,
-          0
-        ],
-        [
-          854,
-          480
-        ],
-        [
-          0,
-          480
-        ],
-        [
-          0,
-          0
+          616,
+          669
         ]
       ],
-      "type": "PARKING",
+      "type": "CENTER_LANE",
       "enabled": true,
       "properties": {}
     }
   ],
-  "TRAFFIC_LINE": [
+  "RIGHT_LANE": [
     {
       "points": [
         [
-          0,
-          0
+          713,
+          293
         ],
         [
-          854,
-          0
-        ],
-        [
-          854,
-          480
-        ],
-        [
-          0,
-          480
-        ],
-        [
-          0,
-          0
+          834,
+          671
         ]
       ],
-      "type": "TRAFFIC_LINE",
-      "enabled": true,
-      "properties": {}
-    }
-  ],
-  "TRAFFIC_SIGN": [
-    {
-      "points": [
-        [
-          0,
-          0
-        ],
-        [
-          854,
-          0
-        ],
-        [
-          854,
-          480
-        ],
-        [
-          0,
-          480
-        ],
-        [
-          0,
-          0
-        ]
-      ],
-      "type": "TRAFFIC_SIGN",
-      "enabled": true,
-      "properties": {}
-    }
-  ],
-  "WRONG_DIRECTION": [
-    {
-      "points": [
-        [
-          366,
-          164
-        ],
-        [
-          433,
-          163
-        ]
-      ],
-      "type": "WRONG_DIRECTION",
-      "enabled": true,
-      "properties": {}
-    },
-    {
-      "points": [
-        [
-          349,
-          123
-        ],
-        [
-          440,
-          112
-        ]
-      ],
-      "type": "WRONG_DIRECTION",
+      "type": "RIGHT_LANE",
       "enabled": true,
       "properties": {}
     }
@@ -151,12 +54,12 @@
     {
       "points": [
         [
-          195,
-          155
+          580,
+          381
         ],
         [
-          372,
-          135
+          713,
+          383
         ]
       ],
       "type": "SPEED",
@@ -166,48 +69,15 @@
     {
       "points": [
         [
-          152,
-          249
+          557,
+          472
         ],
         [
-          370,
-          256
+          733,
+          477
         ]
       ],
       "type": "SPEED",
-      "enabled": true,
-      "properties": {}
-    }
-  ],
-  "EMERGENCY_LANE": [
-    {
-      "points": [
-        [
-          332,
-          113
-        ],
-        [
-          433,
-          103
-        ],
-        [
-          478,
-          386
-        ],
-        [
-          360,
-          404
-        ],
-        [
-          332,
-          113
-        ],
-        [
-          332,
-          113
-        ]
-      ],
-      "type": "EMERGENCY_LANE",
       "enabled": true,
       "properties": {}
     }

@@ -381,7 +381,8 @@ class VideoProcessorMP(multiprocessing.Process):
             print(f"[{self.video_id}] Area manager initialized with available area types: {[t.name for t in AreaType]}")
             
             # Configure wrong direction detector with area manager
-            self.wrong_direction_detector.configure_line_pairs(self.area_manager)
+            # Configure lane lines
+            self.wrong_direction_detector.configure_lane_lines(self.area_manager)
             
             while not self.exit.is_set():
                 try:
@@ -466,24 +467,26 @@ class VideoProcessorMP(multiprocessing.Process):
                 
                 # Run wrong direction detection if enabled
                 if self.model_settings.get("wrong_direction", True):
-                    # Check if we have any wrong direction lines defined
-                    if (AreaType.WRONG_DIRECTION in self.area_manager.areas and 
-                        len(self.area_manager.areas[AreaType.WRONG_DIRECTION]) >= 2):
-                        
+                    # Check if we have any lane lines defined
+                    has_lane_lines = (AreaType.LEFT_LANE in self.area_manager.areas or 
+                                     AreaType.CENTER_LANE in self.area_manager.areas or 
+                                     AreaType.RIGHT_LANE in self.area_manager.areas)
+                    
+                    if has_lane_lines:
                         # Process wrong direction violations                        
                         try:
-                            # Configure line pairs periodically
+                            # Configure lane lines periodically
                             if frame_count == 0 or frame_count % 100 == 0:  # Reconfigure periodically
-                                self.wrong_direction_detector.configure_line_pairs(self.area_manager)
-                                
+                                # Configure lane lines
+                                self.wrong_direction_detector.configure_lane_lines(self.area_manager)
+                            
                             # Run diagnostic only when there's a change in lines
-                            if (key == ord('3') and 
-                                AreaType.WRONG_DIRECTION in self.area_manager.areas and 
-                                len(self.area_manager.areas[AreaType.WRONG_DIRECTION]) % 2 == 0):
-                                
+                            if key == ord('3'):
                                 self.wrong_direction_detector.debug_area_manager(self.area_manager)
-                                print(f"[{self.video_id}] Wrong direction detection configured with " +
-                                    f"{len(self.area_manager.areas[AreaType.WRONG_DIRECTION])//2} line pairs")
+                                lane_count = (len(self.area_manager.areas.get(AreaType.LEFT_LANE, [])) + 
+                                             len(self.area_manager.areas.get(AreaType.CENTER_LANE, [])) + 
+                                             len(self.area_manager.areas.get(AreaType.RIGHT_LANE, [])))
+                                print(f"[{self.video_id}] Wrong direction detection configured with {lane_count} lane lines")
                             
                             processed_frame = self.wrong_direction_detector.process_frame(
                                 processed_frame, self.tracked_objects, self.area_manager)
@@ -756,15 +759,6 @@ class VideoProcessorMP(multiprocessing.Process):
                         track['crossed_lines'].add((speed_line_id, 'speed'))
                         print(f"[{self.video_id}] Object {track_id} crossed speed line {speed_line_id} in direction {speed_direction}")
                         # Would calculate speed here in a real implementation
-                    
-                    # Check wrong direction lines
-                    wrong_dir_crossed, wrong_dir_line_id, wrong_dir_direction = self.area_manager.is_crossing_line(
-                        prev_point, curr_point, AreaType.WRONG_DIRECTION)
-                    if wrong_dir_crossed and (wrong_dir_line_id, 'wrong_dir') not in track['crossed_lines']:
-                        track['crossed_lines'].add((wrong_dir_line_id, 'wrong_dir'))
-                        # Get wrong direction line properties - in a real implementation would check if direction is allowed
-                        # For demonstration, we just report the crossing
-                        print(f"[{self.video_id}] Object {track_id} crossed direction line {wrong_dir_line_id} in direction {wrong_dir_direction}")
                 
                 # Check if object is in parking area
                 if self.area_manager.is_in_area(center_x, center_y, AreaType.PARKING):

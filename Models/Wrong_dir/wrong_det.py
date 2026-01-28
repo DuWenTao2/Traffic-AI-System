@@ -11,18 +11,31 @@ from pathlib import Path
 # Import the AreaType with proper error handling
 parent_dir = Path(__file__).parent.parent
 sys.path.append(str(parent_dir))
+# Add Processing Models directory to path
+processing_models_dir = os.path.join(parent_dir, "Processing Models")
+sys.path.append(processing_models_dir)
+
 try:
     from areas import AreaType
 except ImportError:
-    # Define a backup AreaType if import fails
-    class AreaType(Enum):
-        DETECTION = 1
-        SPEED = 2
-        WRONG_DIRECTION = 3
-        PARKING = 4
-        TRAFFIC_LINE = 5
-        TRAFFIC_SIGN = 6
-        CUSTOM = 7
+    try:
+        # Try importing from Processing Models directory
+        from areas import AreaType
+    except ImportError:
+        # Define a backup AreaType if import fails
+        class AreaType(Enum):
+            DETECTION = 1
+            SPEED = 2
+            WRONG_DIRECTION = 3
+            PARKING = 4
+            TRAFFIC_LINE = 5
+            TRAFFIC_SIGN = 6
+            ILLEGAL_CROSSING = 7
+            EMERGENCY_LANE = 8
+            LEFT_LANE = 9
+            CENTER_LANE = 10
+            RIGHT_LANE = 11
+            CUSTOM = 12
 
 class Direction(Enum):
     """Enum for vehicle direction relative to a line pair"""
@@ -45,14 +58,16 @@ class WrongDirectionDetector:
         # Disable logging setup
         self.logger = self._setup_dummy_logger()
         
-        # State tracking
-        self.vehicle_direction_status = {}  # {vehicle_id: {line_pair_id: direction}}
-        self.line_pairs = {}                # {pair_id: {entry_line, exit_line, etc.}}
+        # State tracking for multi-lane detection
+        self.lane_config = {}               # {lane_id: {left_line, center_line, right_line, direction}}
+        self.vehicle_lane_assignment = {}   # {vehicle_id: lane_id}
+        self.vehicle_direction_vector = {}   # {vehicle_id: (dx, dy)}
+        self.lane_directions = {}            # {lane_id: expected_direction_vector}
         self.wrong_way_vehicles = set()     # Set of vehicle IDs going wrong way
         self.snapshots_counter = 0
         
         self.logger.info(f"Wrong direction detector initialized")
-        self.logger.info(f"Detection will auto-enable when line pairs are configured")
+        self.logger.info(f"Detection will auto-enable when lane lines are configured")
     
     def _setup_dummy_logger(self):
         """Set up a dummy logger that doesn't write to file"""
@@ -65,34 +80,49 @@ class WrongDirectionDetector:
         
         return logger
     
-    def configure_line_pairs(self, area_manager):
-        """Configure line pairs based on lines defined in the AreaManager"""
+
+    
+    def configure_lane_lines(self, area_manager):
+        """Configure lane lines based on lines defined in the AreaManager"""
         try:
-            self.line_pairs = {}
+            # Skip reconfiguration if lane lines haven't changed
+            if hasattr(self, '_last_area_config_hash'):
+                current_hash = hash(str(area_manager.areas.get(AreaType.LEFT_LANE, [])) + 
+                                   str(area_manager.areas.get(AreaType.CENTER_LANE, [])) + 
+                                   str(area_manager.areas.get(AreaType.RIGHT_LANE, [])))
+                if current_hash == self._last_area_config_hash:
+                    return True
+            
+            self.lane_config = {}
+            self.lane_directions = {}
             
             if not self._validate_area_manager(area_manager):
                 return False
             
-            # Get area type to use
-            area_type_to_use = self._get_area_type(area_manager)
+            # Get lane lines
+            left_lanes = self._get_lane_lines(area_manager, AreaType.LEFT_LANE)
+            center_lanes = self._get_lane_lines(area_manager, AreaType.CENTER_LANE)
+            right_lanes = self._get_lane_lines(area_manager, AreaType.RIGHT_LANE)
             
-            # Get wrong direction lines
-            wrong_dir_lines = self._get_wrong_direction_lines(area_manager, area_type_to_use)
-            if not wrong_dir_lines:
+            # Validate lane lines
+            if not self._validate_lane_lines(left_lanes, center_lanes, right_lanes):
                 return False
             
-            # Create pairs of adjacent lines
-            success = self._create_line_pairs(wrong_dir_lines)
+            # Create lane configurations
+            success = self._create_lane_configurations(left_lanes, center_lanes, right_lanes)
             
-            # Always enable detection if pairs were successfully created
+            # Store hash of current configuration
             if success:
+                self._last_area_config_hash = hash(str(left_lanes) + str(center_lanes) + str(right_lanes))
                 self.detection_enabled = True
-                self.logger.info(f"Wrong direction detection automatically ENABLED with {len(self.line_pairs)} line pairs")
+                self.logger.info(f"Wrong direction detection automatically ENABLED with {len(self.lane_config)} lanes")
             
             return success
             
         except Exception as e:
-            self.logger.error(f"Error configuring line pairs: {str(e)}")
+            self.logger.error(f"Error configuring lane lines: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def _validate_area_manager(self, area_manager):
@@ -102,49 +132,99 @@ class WrongDirectionDetector:
             return False
         return True
     
-    def _get_area_type(self, area_manager):
-        """Get the correct area type from area manager or use imported one"""
-        if hasattr(area_manager, 'AreaType') and hasattr(area_manager.AreaType, 'WRONG_DIRECTION'):
-            return area_manager.AreaType.WRONG_DIRECTION
-        return AreaType.WRONG_DIRECTION
+
     
-    def _get_wrong_direction_lines(self, area_manager, area_type):
-        """Get wrong direction lines from area manager"""
-        # Create empty list for area type if it doesn't exist
-        if area_type not in area_manager.areas:
-            area_manager.areas[area_type] = []
-            return None
+    def _get_lane_lines(self, area_manager, area_type):
+        """Get lane lines from area manager"""
+        # Try to get area by name if enum comparison fails
+        area_found = False
+        area_name = area_type.name if hasattr(area_type, 'name') else str(area_type)
         
-        wrong_dir_lines = area_manager.areas[area_type]
-        if len(wrong_dir_lines) < 2 or not isinstance(wrong_dir_lines, list):
-            return None
+        # Check if area exists by direct comparison
+        if area_type in area_manager.areas:
+            area_found = True
+            lane_lines = area_manager.areas[area_type]
+        else:
+            # Try to find area by name
+            for key in area_manager.areas:
+                key_name = key.name if hasattr(key, 'name') else str(key)
+                if key_name == area_name:
+                    area_found = True
+                    lane_lines = area_manager.areas[key]
+                    break
+            else:
+                # Area not found
+                area_manager.areas[area_type] = []
+                return []
         
-        return wrong_dir_lines
+        if not isinstance(lane_lines, list):
+            return []
+        
+        return lane_lines
     
-    def _create_line_pairs(self, wrong_dir_lines):
-        """Create pairs of entry and exit lines"""
-        pair_id = 0
-        for i in range(0, len(wrong_dir_lines) - 1, 2):
-            if i + 1 >= len(wrong_dir_lines):
-                continue
-                
-            entry_line = wrong_dir_lines[i]
-            exit_line = wrong_dir_lines[i + 1]
+    def _validate_lane_lines(self, left_lanes, center_lanes, right_lanes):
+        """Validate lane lines configuration"""
+        # Check if we have at least one lane configuration
+        has_left = len(left_lanes) > 0
+        has_center = len(center_lanes) > 0
+        has_right = len(right_lanes) > 0
+        
+        return has_left or has_center or has_right
+    
+    def _create_lane_configurations(self, left_lanes, center_lanes, right_lanes):
+        """Create lane configurations based on lane lines"""
+        # Create a single lane configuration that considers all three lane types together
+        lane_id = 0
+        
+        # We'll create one combined lane system considering all three types
+        if left_lanes or center_lanes or right_lanes:
+            # Use the first available lane line to determine the general direction
+            main_direction = None
             
-            entry_points = entry_line.get('points', [])
-            exit_points = exit_line.get('points', [])
+            # Prioritize center lane, then left, then right for determining direction
+            if center_lanes:
+                points = center_lanes[0].get('points', [])
+                if len(points) >= 2:
+                    main_direction = self._calculate_lane_direction(points)
+            elif left_lanes:
+                points = left_lanes[0].get('points', [])
+                if len(points) >= 2:
+                    main_direction = self._calculate_lane_direction(points)
+            elif right_lanes:
+                points = right_lanes[0].get('points', [])
+                if len(points) >= 2:
+                    main_direction = self._calculate_lane_direction(points)
             
-            if len(entry_points) == 2 and len(exit_points) == 2:
-                self.line_pairs[pair_id] = {
-                    'entry_line_id': i,
-                    'exit_line_id': i + 1,
-                    'entry_line': entry_points,
-                    'exit_line': exit_points,
-                    'allowed_direction': Direction.FORWARD
+            if main_direction:
+                self.lane_config[lane_id] = {
+                    'left_line': left_lanes[0].get('points', []) if left_lanes else [],
+                    'center_line': center_lanes[0].get('points', []) if center_lanes else [],
+                    'right_line': right_lanes[0].get('points', []) if right_lanes else [],
+                    'type': 'combined_lane'
                 }
-                pair_id += 1
+                self.lane_directions[lane_id] = main_direction
+                lane_id += 1
         
-        return len(self.line_pairs) > 0
+        return len(self.lane_config) > 0
+    
+    def _calculate_lane_direction(self, lane_points):
+        """Calculate the expected direction vector for a lane"""
+        if len(lane_points) < 2:
+            return (1, 0)  # Default direction: right
+        
+        # Calculate direction vector from lane line
+        p1, p2 = lane_points[0], lane_points[1]
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        
+        # Normalize vector
+        length = np.sqrt(dx**2 + dy**2)
+        if length > 0:
+            return (dx/length, dy/length)
+        
+        return (1, 0)
+    
+
     
     def process_frame(self, frame, tracked_objects, area_manager):
         """Process a frame to detect vehicles moving in wrong direction"""
@@ -157,21 +237,24 @@ class WrongDirectionDetector:
         if not self.detection_enabled:
             return processed_frame
         
-        # Configure line pairs if needed
-        if not self.line_pairs:
-            success = self.configure_line_pairs(area_manager)
-            if not success:
+        # Configure lane lines if needed
+        if not self.lane_config:
+            # Configure lane lines
+            lane_success = self.configure_lane_lines(area_manager)
+            if not lane_success:
                 return processed_frame
         
-        # Draw line pairs
-        self._draw_line_pairs(processed_frame)
+        # Draw lane lines
+        if self.lane_config:
+            self._draw_lane_lines(processed_frame, area_manager)
         
         # Validate tracked_objects
         if not self._validate_tracked_objects(tracked_objects):
             return processed_frame
         
         # Process each vehicle for wrong direction
-        self._process_vehicles(processed_frame, tracked_objects)
+        if self.lane_config:
+            self._process_vehicles_multi_lane(processed_frame, tracked_objects, area_manager)
         
         # Display count of wrong way vehicles
         self._display_wrong_way_count(processed_frame)
@@ -187,27 +270,41 @@ class WrongDirectionDetector:
                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
         return processed_frame
     
-    def _draw_line_pairs(self, frame):
-        """Draw all line pairs on the frame"""
-        for _, pair_info in self.line_pairs.items():
-            # Draw entry line (red)
-            entry_line = pair_info['entry_line']
-            cv2.line(frame, entry_line[0], entry_line[1], (0, 0, 255), 1)
-            
-            # Draw exit line (orange)
-            exit_line = pair_info['exit_line']
-            cv2.line(frame, exit_line[0], exit_line[1], (0, 165, 255), 1)
-            
-            # Draw small dots at line endpoints
-            for point in entry_line + exit_line:
-                cv2.circle(frame, point, 2, (255, 255, 255), -1)
+    def _draw_lane_lines(self, frame, area_manager):
+        """Draw all lane lines on the frame"""
+        # Draw left lane lines
+        if AreaType.LEFT_LANE in area_manager.areas:
+            for lane in area_manager.areas[AreaType.LEFT_LANE]:
+                points = lane.get('points', [])
+                if len(points) == 2:
+                    cv2.line(frame, points[0], points[1], (0, 128, 255), 1)
+                    for point in points:
+                        cv2.circle(frame, point, 2, (255, 255, 255), -1)
+        
+        # Draw center lane lines
+        if AreaType.CENTER_LANE in area_manager.areas:
+            for lane in area_manager.areas[AreaType.CENTER_LANE]:
+                points = lane.get('points', [])
+                if len(points) == 2:
+                    cv2.line(frame, points[0], points[1], (255, 128, 0), 1)
+                    for point in points:
+                        cv2.circle(frame, point, 2, (255, 255, 255), -1)
+        
+        # Draw right lane lines
+        if AreaType.RIGHT_LANE in area_manager.areas:
+            for lane in area_manager.areas[AreaType.RIGHT_LANE]:
+                points = lane.get('points', [])
+                if len(points) == 2:
+                    cv2.line(frame, points[0], points[1], (0, 255, 128), 1)
+                    for point in points:
+                        cv2.circle(frame, point, 2, (255, 255, 255), -1)
     
     def _validate_tracked_objects(self, tracked_objects):
         """Validate that tracked_objects is a valid dictionary"""
         return tracked_objects and isinstance(tracked_objects, dict)
     
-    def _process_vehicles(self, frame, tracked_objects):
-        """Process each vehicle to detect wrong direction movement"""
+    def _process_vehicles_multi_lane(self, frame, tracked_objects, area_manager):
+        """Process each vehicle to detect wrong direction movement in multi-lane scenario"""
         for vehicle_id, vehicle_info in tracked_objects.items():
             if not self._has_sufficient_tracking_points(vehicle_info):
                 continue
@@ -216,36 +313,107 @@ class WrongDirectionDetector:
             current_pos = vehicle_info['center_points'][-1]
             prev_pos = vehicle_info['center_points'][-2]
             
-            # Initialize vehicle direction status if needed
-            if vehicle_id not in self.vehicle_direction_status:
-                self.vehicle_direction_status[vehicle_id] = {}
+            # Assign vehicle to lane
+            lane_id = self._assign_vehicle_to_lane(vehicle_id, current_pos, area_manager)
+            if lane_id is None:
+                continue
             
-            # Check each line pair for crossings
-            for pair_id, pair_info in self.line_pairs.items():
-                # Skip if already processed for this pair
-                if self._is_already_processed(vehicle_id, pair_id, frame, vehicle_info):
-                    continue
-                
-                # Check for crossing and handle direction
-                self._check_line_crossing(frame, vehicle_id, pair_id, pair_info, prev_pos, current_pos, vehicle_info)
+            # Calculate vehicle direction vector
+            direction_vector = self._calculate_vehicle_direction(prev_pos, current_pos)
+            self.vehicle_direction_vector[vehicle_id] = direction_vector
+            
+            # Check if vehicle is moving in wrong direction
+            if self._is_wrong_direction(vehicle_id, lane_id, direction_vector):
+                # Handle wrong direction violation
+                if vehicle_id not in self.wrong_way_vehicles:
+                    self._handle_new_violation(frame, vehicle_id, lane_id, vehicle_info)
+            
+            # Highlight vehicle if it's going wrong way
+            if vehicle_id in self.wrong_way_vehicles and 'bbox' in vehicle_info:
+                self._highlight_wrong_way_vehicle(frame, vehicle_info['bbox'])
+        
+        # Clean up old lane assignments to save memory
+        current_time = time.time()
+        vehicles_to_remove = []
+        for vehicle_id, assignment in self.vehicle_lane_assignment.items():
+            if isinstance(assignment, dict) and 'last_assigned' in assignment:
+                if current_time - assignment['last_assigned'] > 60:  # Remove assignments older than 60 seconds
+                    vehicles_to_remove.append(vehicle_id)
+        
+        for vehicle_id in vehicles_to_remove:
+            if vehicle_id in self.vehicle_lane_assignment:
+                del self.vehicle_lane_assignment[vehicle_id]
     
     def _has_sufficient_tracking_points(self, vehicle_info):
         """Check if vehicle has enough tracking points for analysis"""
         return 'center_points' in vehicle_info and len(vehicle_info['center_points']) >= 2
     
-    def _is_already_processed(self, vehicle_id, pair_id, frame, vehicle_info):
-        """Check if vehicle has already been processed for this line pair"""
-        if pair_id in self.vehicle_direction_status[vehicle_id]:
-            # Mark wrong-way vehicles that have already been identified
-            # Only highlight for a limited time (1 second instead of 5 seconds)
-            if (self.vehicle_direction_status[vehicle_id][pair_id] == Direction.BACKWARD and 
-                vehicle_id in self.wrong_way_vehicles and 
-                'bbox' in vehicle_info and 
-                'detection_time' in vehicle_info and
-                time.time() - vehicle_info.get('detection_time', 0) < 1.0):  # Changed from 5 to 1 second
-                self._highlight_wrong_way_vehicle(frame, vehicle_info['bbox'])
-            return True
-        return False
+
+    
+    def _assign_vehicle_to_lane(self, vehicle_id, position, area_manager):
+        """Assign vehicle to a specific lane based on its position"""
+        # Check if vehicle was recently assigned to a lane and position hasn't changed much
+        if vehicle_id in self.vehicle_lane_assignment:
+            # Simple distance check - if vehicle hasn't moved far, keep the same lane assignment
+            if 'last_position' in self.vehicle_lane_assignment.get(vehicle_id, {}):
+                last_pos = self.vehicle_lane_assignment[vehicle_id].get('last_position', position)
+                distance_moved = ((position[0] - last_pos[0]) ** 2 + (position[1] - last_pos[1]) ** 2) ** 0.5
+                if distance_moved < 10:  # If vehicle moved less than 10 pixels
+                    return self.vehicle_lane_assignment[vehicle_id]['lane_id']
+        
+        # Since we now have a single combined lane configuration, return the first (and only) lane if it exists
+        if self.lane_config:
+            lane_id = next(iter(self.lane_config.keys()))  # Get the first lane ID
+            # Store lane assignment with timestamp and position
+            self.vehicle_lane_assignment[vehicle_id] = {
+                'lane_id': lane_id,
+                'last_position': position,
+                'last_assigned': time.time()
+            }
+            return lane_id
+        
+        return None
+    
+    def _distance_from_line(self, point, line_start, line_end):
+        """Calculate distance from a point to a line"""
+        x0, y0 = point
+        x1, y1 = line_start
+        x2, y2 = line_end
+        
+        numerator = abs((y2 - y1) * x0 - (x2 - x1) * y0 + x2 * y1 - y2 * x1)
+        denominator = ((y2 - y1) ** 2 + (x2 - x1) ** 2) ** 0.5
+        
+        if denominator == 0:
+            return float('inf')
+        
+        return numerator / denominator
+    
+    def _calculate_vehicle_direction(self, prev_pos, current_pos):
+        """Calculate vehicle direction vector"""
+        dx = current_pos[0] - prev_pos[0]
+        dy = current_pos[1] - prev_pos[1]
+        
+        # Normalize vector
+        length = np.sqrt(dx ** 2 + dy ** 2)
+        if length > 0:
+            return (dx / length, dy / length)
+        
+        return (0, 0)
+    
+    def _is_wrong_direction(self, vehicle_id, lane_id, direction_vector):
+        """Check if vehicle is moving in wrong direction"""
+        if lane_id not in self.lane_directions:
+            return False
+        
+        expected_direction = self.lane_directions[lane_id]
+        
+        # Calculate dot product to determine direction similarity
+        dot_product = direction_vector[0] * expected_direction[0] + direction_vector[1] * expected_direction[1]
+        
+        # Use a more conservative threshold to reduce false positives
+        # A dot product close to -1 means completely opposite directions
+        # Using -0.7 instead of -0.5 to reduce sensitivity
+        return dot_product < -0.75  # More conservative threshold for wrong direction
     
     def _highlight_wrong_way_vehicle(self, frame, bbox):
         """Highlight a vehicle going the wrong way with thinner box"""
@@ -255,28 +423,7 @@ class WrongDirectionDetector:
                    (int(bbox[0]), int(bbox[1]) - 10), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)  # Smaller font
     
-    def _check_line_crossing(self, frame, vehicle_id, pair_id, pair_info, prev_pos, current_pos, vehicle_info):
-        """Check if vehicle is crossing entry or exit line and handle appropriately"""
-        # Check line crossings
-        entry_crossed = self._line_segments_intersect(
-            prev_pos, current_pos, 
-            pair_info['entry_line'][0], pair_info['entry_line'][1])
-        
-        exit_crossed = self._line_segments_intersect(
-            prev_pos, current_pos,
-            pair_info['exit_line'][0], pair_info['exit_line'][1])
-        
-        # Handle correct direction (entry line first)
-        if entry_crossed:
-            self.vehicle_direction_status[vehicle_id][pair_id] = Direction.FORWARD
-        
-        # Handle wrong direction (exit line first)
-        elif exit_crossed:
-            self.vehicle_direction_status[vehicle_id][pair_id] = Direction.BACKWARD
-            
-            # Process new violation
-            if vehicle_id not in self.wrong_way_vehicles:
-                self._handle_new_violation(frame, vehicle_id, pair_id, vehicle_info)
+
     
     def _handle_new_violation(self, frame, vehicle_id, pair_id, vehicle_info):
         """Handle a newly detected wrong way violation"""
@@ -355,8 +502,13 @@ class WrongDirectionDetector:
     
     def clear_tracking_data(self):
         """Clear all tracking data (useful when changing scenes)"""
-        self.vehicle_direction_status = {}
         self.wrong_way_vehicles = set()
+        # Clear multi-lane tracking data
+        self.vehicle_lane_assignment = {}
+        self.vehicle_direction_vector = {}
+        # Clear configuration hash to force reconfiguration
+        if hasattr(self, '_last_area_config_hash'):
+            delattr(self, '_last_area_config_hash')
         self.logger.info("Wrong direction tracking data cleared")
     
     def debug_area_manager(self, area_manager):
