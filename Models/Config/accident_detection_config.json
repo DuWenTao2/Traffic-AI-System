@@ -1,0 +1,22 @@
+{
+  "description": "事故检测配置文件",
+  "version": "1.0",
+  "date": "2026-01-28",
+  "parameters": {
+    "# 模型参数": "",
+    "model_path": "weights/Accident_Detection/accident_multi.pt",
+    
+    "# 检测参数": "",
+    "conf_threshold": 0.3,
+    "frame_skip": 3,
+    "cooldown": 35,
+    
+    "# 自动禁用参数": "",
+    "auto_disable_count": 3,
+    "auto_disable_window": 80,
+    "auto_disable_duration": 600,
+    
+    "# 事故区域参数": "",
+    "accident_area_radius": 180
+  }
+}

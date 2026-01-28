@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import time
 import os
+import json
 from datetime import datetime
 
 class KalmanFilter:
@@ -56,19 +57,40 @@ class KalmanFilter:
         return self.x[0, 0]
 
 class SpeedDetector:
-    def __init__(self, stream_id="default", pixels_per_meter=30, smoothing_window=10, font_style="plain", violation_manager=None):
+    def __init__(self, stream_id="default", pixels_per_meter=30, smoothing_window=10, font_style="plain", violation_manager=None, **kwargs):
        
         self.stream_id = stream_id
-        self.pixels_per_meter = pixels_per_meter  # Calibration parameter
-        self.smoothing_window = smoothing_window
-        self.enabled = False  # Only enable after speed lines are defined
         self.violation_manager = violation_manager
-        self.speed_limit = 10.0  # Maximum speed limit
-        self.min_speed = 5.0    # Minimum speed limit
+        self.enabled = False  # Only enable after speed lines are defined
+        
+        # Vehicle tracking data
+        self.vehicles = {}  # Store vehicle position history
+        self.speeds = {}    # Store calculated speeds
+        self.recorded_speeds = {}  # Store speeds recorded at the measurement line
+        self.speed_filters = {}  # Store Kalman filters for each vehicle
+        
+        # Keep track of violations to avoid duplicates
+        self.speed_violations = set()  # Set of vehicle IDs that have already been recorded for violation
+        
+        # Modified output directory handling for snapshots when needed
+        self.output_dir = None
+        
+        # 1. 设置代码默认参数
+        self._set_default_parameters()
+        
+        # 2. 从配置文件加载参数
+        self._load_config_parameters()
+        
+        # 3. 应用启动参数（优先级最高）
+        self.pixels_per_meter = pixels_per_meter
+        self.smoothing_window = smoothing_window
+        self.font_style = font_style
+        
+        # 应用额外的启动参数
+        self.set_parameters(**kwargs)
         
         # Set font style based on parameter
-        self.font_style = font_style
-        if font_style.lower() == "simplex":
+        if self.font_style.lower() == "simplex":
             self.font = cv2.FONT_HERSHEY_SIMPLEX
             self.font_scale = 0.6
             self.font_thickness = 2
@@ -77,36 +99,11 @@ class SpeedDetector:
             self.font_scale = 1.2
             self.font_thickness = 1
         
-        # Vehicle tracking data
-        self.vehicles = {}  # Store vehicle position history
-        self.speeds = {}    # Store calculated speeds
-        self.recorded_speeds = {}  # Store speeds recorded at the measurement line
-        self.speed_filters = {}  # Store Kalman filters for each vehicle
-        self.kalman_config = {
-            'process_noise': 0.1,
-            'measurement_noise': 1.0,
-            'error_covariance': 1.0
-        }
-        
-        # Fixed time step for more consistent speed calculation (33.33ms = ~30 FPS)
-        self.fixed_time_step = 1.0 / 30.0  # Fixed time step in seconds
+        # 初始化最后一帧时间
         self.last_frame_time = time.time()
         
-        # Speed stability parameters
-        self.max_speed_change = 5.0  # Maximum allowed change in speed between calculations (km/h)
-        self.min_distance_for_calc = 3.0  # Minimum pixel distance to calculate speed (reduces noise)
-        
-        # Disable directory creation and CSV logging
-        self.disable_csv_logging = True
-        
-        # Keep track of violations to avoid duplicates
-        self.speed_violations = set()  # Set of vehicle IDs that have already been recorded for violation
-        
-        print(f"[{self.stream_id}] Speed detector initialized with calibration: {pixels_per_meter} pixels/meter")
+        print(f"[{self.stream_id}] Speed detector initialized with calibration: {self.pixels_per_meter} pixels/meter")
         print(f"[{self.stream_id}] Speed limit set to: {self.speed_limit} km/h")
-        
-        # Modified output directory handling for snapshots when needed
-        self.output_dir = None
         
     def calculate_speed(self, frame, tracked_objects, fps=30):
         """Calculate speed for all tracked vehicles and identify violations"""
@@ -507,3 +504,88 @@ class SpeedDetector:
     def is_enabled(self):
         """Check if speed detection is enabled"""
         return self.enabled
+    
+    def _set_default_parameters(self):
+        """设置代码默认参数"""
+        # 基本参数
+        self.pixels_per_meter = 30  # Calibration parameter
+        self.smoothing_window = 10
+        self.font_style = "plain"
+        self.speed_limit = 10.0  # Maximum speed limit
+        self.min_speed = 5.0    # Minimum speed limit
+        
+        # 卡尔曼滤波器参数
+        self.kalman_config = {
+            'process_noise': 0.1,
+            'measurement_noise': 1.0,
+            'error_covariance': 1.0
+        }
+        
+        # 速度计算参数
+        self.fixed_time_step = 1.0 / 30.0  # Fixed time step in seconds
+        self.max_speed_change = 5.0  # Maximum allowed change in speed between calculations (km/h)
+        self.min_distance_for_calc = 3.0  # Minimum pixel distance to calculate speed (reduces noise)
+        
+        # 其他参数
+        self.disable_csv_logging = True
+    
+    def _load_config_parameters(self):
+        """从配置文件加载参数"""
+        # 配置文件路径
+        config_path = os.path.join(os.path.dirname(__file__), "..", "Config", "speed_detection_config.json")
+        config_path = os.path.abspath(config_path)
+        
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                
+                # 加载参数
+                if 'parameters' in config:
+                    params = config['parameters']
+                    # 跳过注释键（以#开头的键）
+                    for key, value in params.items():
+                        if not key.startswith('#'):
+                            # 处理卡尔曼滤波器参数的特殊情况
+                            if key in ['process_noise', 'measurement_noise', 'error_covariance']:
+                                if 'kalman_config' not in self.__dict__:
+                                    self.kalman_config = {}
+                                self.kalman_config[key] = value
+                            else:
+                                if hasattr(self, key):
+                                    setattr(self, key, value)
+                    print(f"[{self.stream_id}] Speed detection parameters loaded from config file")
+            except Exception as e:
+                print(f"[{self.stream_id}] Error loading config file: {str(e)}")
+        else:
+            print(f"[{self.stream_id}] Config file not found at {config_path}, using default parameters")
+    
+    def set_parameters(self, **kwargs):
+        """设置检测参数"""
+        for key, value in kwargs.items():
+            # 处理卡尔曼滤波器参数的特殊情况
+            if key in ['process_noise', 'measurement_noise', 'error_covariance']:
+                if 'kalman_config' not in self.__dict__:
+                    self.kalman_config = {}
+                self.kalman_config[key] = value
+            else:
+                if hasattr(self, key):
+                    setattr(self, key, value)
+        print(f"[{self.stream_id}] Speed detection parameters updated")
+    
+    def get_parameters(self):
+        """获取当前参数"""
+        params = {
+            'pixels_per_meter': self.pixels_per_meter,
+            'smoothing_window': self.smoothing_window,
+            'font_style': self.font_style,
+            'speed_limit': self.speed_limit,
+            'min_speed': self.min_speed,
+            'fixed_time_step': self.fixed_time_step,
+            'max_speed_change': self.max_speed_change,
+            'min_distance_for_calc': self.min_distance_for_calc,
+            'disable_csv_logging': self.disable_csv_logging
+        }
+        # 添加卡尔曼滤波器参数
+        params.update(self.kalman_config)
+        return params

@@ -1,27 +1,14 @@
 import cv2
 import numpy as np
 import time
+import json
+import os
 
 class LaneDetector:
-    def __init__(self, stream_id="default", debug=False):
+    def __init__(self, stream_id="default", debug=False, **kwargs):
         self.stream_id = stream_id
         self.debug = debug
         self.detection_enabled = True
-        
-        # 车道线检测参数
-        self.canny_threshold1 = 40
-        self.canny_threshold2 = 120
-        self.hough_rho = 1
-        self.hough_theta = np.pi / 180
-        self.hough_threshold = 80
-        self.hough_min_line_length = 80
-        self.hough_max_line_gap = 50
-        
-        # 车道线颜色阈值
-        self.white_lower = np.array([200, 200, 200])
-        self.white_upper = np.array([255, 255, 255])
-        self.yellow_lower = np.array([100, 100, 0])
-        self.yellow_upper = np.array([200, 200, 100])
         
         # 车道线类型定义
         self.LANE_TYPE_EMERGENCY = "emergency"
@@ -31,7 +18,17 @@ class LaneDetector:
         
         # 车道线历史记录，用于平滑
         self.lane_history = {}
-        self.history_length = 5
+        
+        # 1. 设置代码默认值
+        self._set_default_parameters()
+        
+        # 2. 从配置文件加载参数
+        self._load_config_parameters()
+        
+        # 3. 应用启动参数（优先级最高）
+        self.set_parameters(**kwargs)
+        
+        print(f"[{self.stream_id}] Lane detector initialized with parameters loaded")
     
     def detect_lanes(self, frame):
         """
@@ -355,6 +352,55 @@ class LaneDetector:
         status = "ENABLED" if self.detection_enabled else "DISABLED"
         print(f"[{self.stream_id}] Lane detection {status}")
         return self.detection_enabled
+    
+    def _set_default_parameters(self):
+        """设置代码默认参数"""
+        # 车道线检测参数
+        self.canny_threshold1 = 40
+        self.canny_threshold2 = 120
+        self.hough_rho = 1
+        self.hough_theta = np.pi / 180
+        self.hough_threshold = 80
+        self.hough_min_line_length = 80
+        self.hough_max_line_gap = 50
+        
+        # 车道线颜色阈值
+        self.white_lower = np.array([200, 200, 200])
+        self.white_upper = np.array([255, 255, 255])
+        self.yellow_lower = np.array([100, 100, 0])
+        self.yellow_upper = np.array([200, 200, 100])
+        
+        # 车道线历史记录，用于平滑
+        self.history_length = 5
+    
+    def _load_config_parameters(self):
+        """从配置文件加载参数"""
+        # 配置文件路径
+        config_path = os.path.join(os.path.dirname(__file__), "..", "Config", "lane_detection_config.json")
+        config_path = os.path.abspath(config_path)
+        
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                
+                # 加载参数
+                if 'parameters' in config:
+                    params = config['parameters']
+                    # 跳过注释键（以#开头的键）
+                    for key, value in params.items():
+                        if not key.startswith('#') and hasattr(self, key):
+                            # 处理颜色阈值的特殊情况（需要转换为numpy数组）
+                            if key in ['white_lower', 'white_upper', 'yellow_lower', 'yellow_upper']:
+                                if isinstance(value, list):
+                                    setattr(self, key, np.array(value))
+                            else:
+                                setattr(self, key, value)
+                    print(f"[{self.stream_id}] Lane detection parameters loaded from config file")
+            except Exception as e:
+                print(f"[{self.stream_id}] Error loading config file: {str(e)}")
+        else:
+            print(f"[{self.stream_id}] Config file not found at {config_path}, using default parameters")
     
     def set_parameters(self, **kwargs):
         """设置检测参数"""

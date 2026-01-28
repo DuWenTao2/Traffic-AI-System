@@ -1,0 +1,26 @@
+{
+  "description": "车道线检测配置文件",
+  "version": "1.0",
+  "date": "2026-01-28",
+  "parameters": {
+    "# Canny边缘检测参数": "",
+    "canny_threshold1": 40,
+    "canny_threshold2": 120,
+    
+    "# Hough变换参数": "",
+    "hough_rho": 1,
+    "hough_theta": 0.0174533,
+    "hough_threshold": 80,
+    "hough_min_line_length": 80,
+    "hough_max_line_gap": 50,
+    
+    "# 颜色阈值参数": "",
+    "white_lower": [200, 200, 200],
+    "white_upper": [255, 255, 255],
+    "yellow_lower": [100, 100, 0],
+    "yellow_upper": [200, 200, 100],
+    
+    "# 历史记录参数": "",
+    "history_length": 5
+  }
+}

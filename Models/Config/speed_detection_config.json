@@ -1,0 +1,26 @@
+{
+  "description": "速度检测配置文件",
+  "version": "1.0",
+  "date": "2026-01-28",
+  "parameters": {
+    "# 基本参数": "",
+    "pixels_per_meter": 30,
+    "smoothing_window": 10,
+    "font_style": "plain",
+    "speed_limit": 10.0,
+    "min_speed": 5.0,
+    
+    "# 卡尔曼滤波器参数": "",
+    "process_noise": 0.1,
+    "measurement_noise": 1.0,
+    "error_covariance": 1.0,
+    
+    "# 速度计算参数": "",
+    "fixed_time_step": 0.03333333333333333,
+    "max_speed_change": 5.0,
+    "min_distance_for_calc": 3.0,
+    
+    "# 其他参数": "",
+    "disable_csv_logging": true
+  }
+}

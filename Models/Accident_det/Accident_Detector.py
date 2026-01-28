@@ -7,34 +7,14 @@ import logging
 from datetime import datetime
 from ultralytics import YOLO
 import os
+import json
 from collections import deque
 
 class AccidentDetector:
-    def __init__(self, stream_id="default", model_path=None, conf_threshold=0.3, cooldown=35, frame_skip=3, accident_alert_manager=None):
+    def __init__(self, stream_id="default", model_path=None, conf_threshold=0.3, cooldown=35, frame_skip=3, accident_alert_manager=None, **kwargs):
         
-        # Initialize accident model path
-        if model_path is None:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            model_path = os.path.join(base_dir, "accident.pt")
-            
-        # Load accident detection model
-        self.model = YOLO(model_path)
         self.stream_id = stream_id
-        self.conf_threshold = conf_threshold
-        self.cooldown = cooldown  # Cooldown period in seconds
-        self.frame_skip = frame_skip
-        # self.accident_classes = [
-        #     'bike_bike_accident', 'bike_object_accident', 'bike_person_accident',
-        #     'car_bike_accident', 'car_car_accident', 'car_object_accident', 'car_person_accident'
-        # ]
-
-        # 直接从模型提取类别名称
-        if hasattr(self.model, 'names') and self.model.names:
-            # 直接使用模型中的类别名称，不转为小写
-            self.accident_classes = list(self.model.names.values()) if isinstance(self.model.names, dict) else self.model.names
-        else:
-            # 回退到默认事故类别
-            self.accident_classes = ['Accident']
+        self.accident_alert_manager = accident_alert_manager
         
         # State management variables
         self.last_alert_time = 0
@@ -42,29 +22,46 @@ class AccidentDetector:
         self.frame_counter = 0
         self.snapshot_taken = False
         
-        # Accident alert manager for centralized logging
-        self.accident_alert_manager = accident_alert_manager
-        
         # Detection control flags
         self.detection_enabled = False
         self.alerts_disabled = False
         self.alerts_disabled_until = 0
         
-        # Auto-disable functionality parameters
-        self.repeated_accidents = {}     # Track repeated accidents by location
-        self.accident_timestamps = []    # Store recent accident timestamps
-        self.auto_disable_count = 3      # Accidents threshold for auto-disable
-        self.auto_disable_window = 80    # Time window in seconds
-        self.auto_disable_duration = 600 # Auto-disable duration (10 minutes)
-        self.auto_disable_until = 0      # Auto-disable end timestamp
-        self.auto_disabled = False       # Flag indicating if model was auto-disabled
-        
         # Vehicle ID tracking with more robust tracking
         self.vehicles_in_accident = set()  # Store vehicle IDs involved in the last accident
         self.accidents_history = deque(maxlen=5)  # Store recent accident locations to avoid duplicate alerts
-        self.accident_area_radius = 180  # Radius in pixels to consider as the same accident area
         self.current_accident_signature = None  # Track characteristics of current accident
         self.detected_accident = None  # Store current accident detection details
+        
+        # Repeated accidents tracking
+        self.repeated_accidents = {}     # Track repeated accidents by location
+        
+        # 1. 设置代码默认参数
+        self._set_default_parameters()
+        
+        # 2. 从配置文件加载参数
+        self._load_config_parameters()
+        
+        # 3. 应用启动参数（优先级最高）
+        if model_path is not None:
+            self.model_path = model_path
+        self.conf_threshold = conf_threshold
+        self.cooldown = cooldown
+        self.frame_skip = frame_skip
+        
+        # 应用额外的启动参数
+        self.set_parameters(**kwargs)
+        
+        # Load accident detection model
+        self.model = YOLO(self.model_path)
+        
+        # 直接从模型提取类别名称
+        if hasattr(self.model, 'names') and self.model.names:
+            # 直接使用模型中的类别名称，不转为小写
+            self.accident_classes = list(self.model.names.values()) if isinstance(self.model.names, dict) else self.model.names
+        else:
+            # 回退到默认事故类别
+            self.accident_classes = ['Accident']
 
         # Setup dummy logger instead of file logger
         self._setup_dummy_logger()
@@ -393,6 +390,74 @@ class AccidentDetector:
             print(f"[{self.stream_id}] Accident alerts DISABLED for {duration} seconds")
         
         return self.alerts_disabled
+    
+    def _set_default_parameters(self):
+        """设置代码默认参数"""
+        # 模型参数
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.model_path = os.path.join(base_dir, "accident.pt")
+        
+        # 事故检测参数
+        self.conf_threshold = 0.3
+        self.cooldown = 35
+        self.frame_skip = 3
+        
+        # 自动禁用参数
+        self.auto_disable_count = 3
+        self.auto_disable_window = 80
+        self.auto_disable_duration = 600
+        self.auto_disable_until = 0
+        self.auto_disabled = False
+        
+        # 事故区域参数
+        self.accident_area_radius = 180
+        
+        # 事故时间戳
+        self.accident_timestamps = []
+    
+    def _load_config_parameters(self):
+        """从配置文件加载参数"""
+        # 配置文件路径
+        config_path = os.path.join(os.path.dirname(__file__), "..", "Config", "accident_detection_config.json")
+        config_path = os.path.abspath(config_path)
+        
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                
+                # 加载参数
+                if 'parameters' in config:
+                    params = config['parameters']
+                    # 跳过注释键（以#开头的键）
+                    for key, value in params.items():
+                        if not key.startswith('#') and hasattr(self, key):
+                            setattr(self, key, value)
+                    print(f"[{self.stream_id}] Accident detection parameters loaded from config file")
+            except Exception as e:
+                print(f"[{self.stream_id}] Error loading config file: {str(e)}")
+        else:
+            print(f"[{self.stream_id}] Config file not found at {config_path}, using default parameters")
+    
+    def set_parameters(self, **kwargs):
+        """设置检测参数"""
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        print(f"[{self.stream_id}] Accident detection parameters updated")
+    
+    def get_parameters(self):
+        """获取当前参数"""
+        return {
+            'model_path': self.model_path,
+            'conf_threshold': self.conf_threshold,
+            'cooldown': self.cooldown,
+            'frame_skip': self.frame_skip,
+            'auto_disable_count': self.auto_disable_count,
+            'auto_disable_window': self.auto_disable_window,
+            'auto_disable_duration': self.auto_disable_duration,
+            'accident_area_radius': self.accident_area_radius
+        }
 
     def process_video(self, video_path):
         cap = cv2.VideoCapture(video_path)
