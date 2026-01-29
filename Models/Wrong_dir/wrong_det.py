@@ -172,38 +172,84 @@ class WrongDirectionDetector:
         return has_left or has_center or has_right
     
     def _create_lane_configurations(self, left_lanes, center_lanes, right_lanes):
-        """Create lane configurations based on lane lines"""
-        # Create a single lane configuration that considers all three lane types together
+        """Create lane configurations based on lane lines, supporting bidirectional lanes"""
         lane_id = 0
         
-        # We'll create one combined lane system considering all three types
-        if left_lanes or center_lanes or right_lanes:
-            # Use the first available lane line to determine the general direction
-            main_direction = None
-            
-            # Prioritize center lane, then left, then right for determining direction
-            if center_lanes:
-                points = center_lanes[0].get('points', [])
-                if len(points) >= 2:
-                    main_direction = self._calculate_lane_direction(points)
-            elif left_lanes:
-                points = left_lanes[0].get('points', [])
-                if len(points) >= 2:
-                    main_direction = self._calculate_lane_direction(points)
-            elif right_lanes:
-                points = right_lanes[0].get('points', [])
-                if len(points) >= 2:
-                    main_direction = self._calculate_lane_direction(points)
-            
-            if main_direction:
+        # Check if we have enough lane lines for configuration
+        if not (left_lanes or center_lanes or right_lanes):
+            return False
+        
+        # Create configurations for left, center, and right lanes
+        # Each lane can have its own direction based on its position
+        
+        # Process left lanes (typically for one direction in bidirectional scenario)
+        for i, left_lane in enumerate(left_lanes):
+            points = left_lane.get('points', [])
+            if len(points) >= 2:
+                # Calculate direction for left lane
+                left_direction = self._calculate_lane_direction(points)
+                
                 self.lane_config[lane_id] = {
-                    'left_line': left_lanes[0].get('points', []) if left_lanes else [],
-                    'center_line': center_lanes[0].get('points', []) if center_lanes else [],
-                    'right_line': right_lanes[0].get('points', []) if right_lanes else [],
-                    'type': 'combined_lane'
+                    'left_line': points,
+                    'center_line': [],
+                    'right_line': [],
+                    'type': 'left_lane',
+                    'position': 'left'  # Mark as left side lane
                 }
-                self.lane_directions[lane_id] = main_direction
+                self.lane_directions[lane_id] = left_direction
                 lane_id += 1
+        
+        # Process center lanes
+        for i, center_lane in enumerate(center_lanes):
+            points = center_lane.get('points', [])
+            if len(points) >= 2:
+                # Calculate direction for center lane
+                center_direction = self._calculate_lane_direction(points)
+                
+                self.lane_config[lane_id] = {
+                    'left_line': [],
+                    'center_line': points,
+                    'right_line': [],
+                    'type': 'center_lane',
+                    'position': 'center'  # Mark as center lane
+                }
+                self.lane_directions[lane_id] = center_direction
+                lane_id += 1
+        
+        # Process right lanes (typically for opposite direction in bidirectional scenario)
+        for i, right_lane in enumerate(right_lanes):
+            points = right_lane.get('points', [])
+            if len(points) >= 2:
+                # Calculate direction for right lane
+                right_direction = self._calculate_lane_direction(points)
+                
+                self.lane_config[lane_id] = {
+                    'left_line': [],
+                    'center_line': [],
+                    'right_line': points,
+                    'type': 'right_lane',
+                    'position': 'right'  # Mark as right side lane
+                }
+                self.lane_directions[lane_id] = right_direction
+                lane_id += 1
+        
+        # If we have both left and right lanes, this is likely a bidirectional road
+        # regardless of whether there's a center lane or not
+        if left_lanes and right_lanes:
+            # For bidirectional roads, we need to adjust directions
+            # typically left and right lanes have opposite directions
+            if len(self.lane_config) >= 2:
+                # Assume first lane is left, last lane is right
+                left_lane_id = list(self.lane_config.keys())[0]
+                right_lane_id = list(self.lane_config.keys())[-1]
+                
+                # Get left lane direction
+                left_direction = self.lane_directions[left_lane_id]
+                
+                # For right lane in bidirectional road, use opposite direction
+                # Calculate opposite direction vector
+                right_opposite_direction = (-left_direction[0], -left_direction[1])
+                self.lane_directions[right_lane_id] = right_opposite_direction
         
         return len(self.lane_config) > 0
     
@@ -351,28 +397,101 @@ class WrongDirectionDetector:
 
     
     def _assign_vehicle_to_lane(self, vehicle_id, position, area_manager):
-        """Assign vehicle to a specific lane based on its position"""
+        """Assign vehicle to a specific lane based on its position, supporting bidirectional lanes"""
         # Check if vehicle was recently assigned to a lane and position hasn't changed much
         if vehicle_id in self.vehicle_lane_assignment:
             # Simple distance check - if vehicle hasn't moved far, keep the same lane assignment
             if 'last_position' in self.vehicle_lane_assignment.get(vehicle_id, {}):
                 last_pos = self.vehicle_lane_assignment[vehicle_id].get('last_position', position)
                 distance_moved = ((position[0] - last_pos[0]) ** 2 + (position[1] - last_pos[1]) ** 2) ** 0.5
-                if distance_moved < 10:  # If vehicle moved less than 10 pixels
+                if distance_moved < 15:  # If vehicle moved less than 15 pixels
                     return self.vehicle_lane_assignment[vehicle_id]['lane_id']
         
-        # Since we now have a single combined lane configuration, return the first (and only) lane if it exists
-        if self.lane_config:
-            lane_id = next(iter(self.lane_config.keys()))  # Get the first lane ID
+        # If no lane config, return None
+        if not self.lane_config:
+            return None
+        
+        # Get vehicle position
+        x, y = position
+        
+        # Calculate distances to all lanes and assign to the most appropriate one
+        best_lane_id = None
+        min_distance = float('inf')
+        
+        for lane_id, lane_config in self.lane_config.items():
+            # Get lane lines for this lane
+            left_line = lane_config.get('left_line', [])
+            center_line = lane_config.get('center_line', [])
+            right_line = lane_config.get('right_line', [])
+            
+            # Calculate distance to the closest line in this lane
+            lane_distance = float('inf')
+            
+            # Check left line
+            if len(left_line) >= 2:
+                dist = self._distance_from_line(position, left_line[0], left_line[1])
+                lane_distance = min(lane_distance, dist)
+            
+            # Check center line
+            if len(center_line) >= 2:
+                dist = self._distance_from_line(position, center_line[0], center_line[1])
+                lane_distance = min(lane_distance, dist)
+            
+            # Check right line
+            if len(right_line) >= 2:
+                dist = self._distance_from_line(position, right_line[0], right_line[1])
+                lane_distance = min(lane_distance, dist)
+            
+            # Consider lane position for bidirectional roads
+            lane_position = lane_config.get('position', 'center')
+            
+            # For bidirectional roads, adjust assignment based on vehicle's x position
+            if len(self.lane_config) > 1:  # Likely bidirectional
+                # Get image width to determine center
+                # We'll use a heuristic based on lane positions
+                # Calculate average x positions of all lane lines
+                all_lane_x = []
+                for lid, lconfig in self.lane_config.items():
+                    lines = [lconfig.get('left_line', []), lconfig.get('center_line', []), lconfig.get('right_line', [])]
+                    for line in lines:
+                        if len(line) >= 2:
+                            for point in line:
+                                all_lane_x.append(point[0])
+                
+                if all_lane_x:
+                    # Determine road center
+                    road_min_x = min(all_lane_x)
+                    road_max_x = max(all_lane_x)
+                    road_center_x = (road_min_x + road_max_x) / 2
+                    
+                    # Adjust distance based on lane position and vehicle's x position
+                    # For left side lanes, prefer vehicles on left side
+                    if lane_position == 'left' and x < road_center_x:
+                        lane_distance *= 0.8  # Give preference
+                    elif lane_position == 'right' and x > road_center_x:
+                        lane_distance *= 0.8  # Give preference
+                    elif lane_position == 'left' and x > road_center_x:
+                        lane_distance *= 1.5  # Less likely
+                    elif lane_position == 'right' and x < road_center_x:
+                        lane_distance *= 1.5  # Less likely
+            
+            # Update best lane
+            if lane_distance < min_distance:
+                min_distance = lane_distance
+                best_lane_id = lane_id
+        
+        # Assign vehicle to the best lane
+        if best_lane_id is not None:
             # Store lane assignment with timestamp and position
             self.vehicle_lane_assignment[vehicle_id] = {
-                'lane_id': lane_id,
+                'lane_id': best_lane_id,
                 'last_position': position,
                 'last_assigned': time.time()
             }
-            return lane_id
+            return best_lane_id
         
-        return None
+        # Fallback: return first lane if no best lane found
+        return next(iter(self.lane_config.keys())) if self.lane_config else None
     
     def _distance_from_line(self, point, line_start, line_end):
         """Calculate distance from a point to a line"""
@@ -401,19 +520,32 @@ class WrongDirectionDetector:
         return (0, 0)
     
     def _is_wrong_direction(self, vehicle_id, lane_id, direction_vector):
-        """Check if vehicle is moving in wrong direction"""
+        """Check if vehicle is moving in wrong direction, supporting bidirectional lanes"""
         if lane_id not in self.lane_directions:
             return False
         
+        # Get expected direction for this lane
         expected_direction = self.lane_directions[lane_id]
         
         # Calculate dot product to determine direction similarity
         dot_product = direction_vector[0] * expected_direction[0] + direction_vector[1] * expected_direction[1]
         
-        # Use a more conservative threshold to reduce false positives
-        # A dot product close to -1 means completely opposite directions
-        # Using -0.7 instead of -0.5 to reduce sensitivity
-        return dot_product < -0.75  # More conservative threshold for wrong direction
+        # Get lane configuration to determine if it's a bidirectional scenario
+        lane_config = self.lane_config.get(lane_id, {})
+        lane_position = lane_config.get('position', 'center')
+        
+        # For bidirectional roads, use a slightly more conservative threshold
+        # This helps reduce false positives when lanes are close together
+        if len(self.lane_config) > 1:  # Likely bidirectional
+            # For bidirectional scenarios, use a threshold of -0.8
+            # This requires a more significant direction difference to be considered wrong
+            return dot_product < -0.8
+        else:
+            # For unidirectional roads, use a threshold of -0.75
+            return dot_product < -0.75
+        
+        # Fallback threshold
+        return dot_product < -0.75
     
     def _highlight_wrong_way_vehicle(self, frame, bbox):
         """Highlight a vehicle going the wrong way with thinner box"""
