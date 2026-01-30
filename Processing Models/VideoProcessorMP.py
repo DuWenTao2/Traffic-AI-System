@@ -74,6 +74,9 @@ speed_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(speed_module)
 SpeedDetector = speed_module.SpeedDetector
 
+# Import LaneBasedRegionGenerator
+from lane_based_region_generator import LaneBasedRegionGenerator
+
 # Import ParkingDetector module
 parking_module_path = os.path.join(parking_dir, "parking_Detctor.py")
 spec = importlib.util.spec_from_file_location("parking_Detctor", parking_module_path)
@@ -120,8 +123,16 @@ lane_detection_dir = os.path.join(models_dir, "LaneDetection")
 if lane_detection_dir not in sys.path:
     sys.path.append(lane_detection_dir)
 
+# Add RoadDebris directory
+road_debris_dir = os.path.join(models_dir, "RoadDebris")
+if road_debris_dir not in sys.path:
+    sys.path.append(road_debris_dir)
+
 # Import LaneDetector module
 from lane_detector import LaneDetector
+
+# Import RoadDebrisDetector module
+from RoadDebrisDetector import RoadDebrisDetector
 
 # Import violation management modules  
 from Violation_Proc.violation_manager import ViolationManager
@@ -172,8 +183,13 @@ class VideoProcessorMP(multiprocessing.Process):
             "wrong_direction": True,
             "illegal_crossing": True,
             "emergency_lane": True,
-            "lane_detection": True
+            "lane_detection": False,
+            "road_debris_detection": False
         }
+        
+        # Initialize LaneBasedRegionGenerator
+        self.region_generator = LaneBasedRegionGenerator(stream_id=video_id)
+        self.last_region_update = 0
     
     def run(self):
         try:
@@ -368,6 +384,13 @@ class VideoProcessorMP(multiprocessing.Process):
             # Initialize lane detector
             self.lane_detector = LaneDetector(stream_id=self.video_id)
             print(f"[{self.video_id}] Lane detector initialized")
+            
+            # Initialize road debris detector
+            self.road_debris_detector = RoadDebrisDetector(
+                stream_id=self.video_id,
+                violation_manager=self.violation_manager
+            )
+            print(f"[{self.video_id}] Road debris detector initialized")
             
             # Load YOLO model (each process needs its own model instance)
             print(f"[{self.video_id}] Loading YOLO model...")
@@ -566,11 +589,29 @@ class VideoProcessorMP(multiprocessing.Process):
                         # If no emergency lane areas defined, skip detection
                         pass
                 
+                # Run road debris detection if enabled
+                if self.model_settings.get("road_debris_detection", False):
+                    # Process road debris detection
+                    try:
+                        processed_frame = self.road_debris_detector.detect_debris(processed_frame, self.tracked_objects)
+                    except Exception as e:
+                        print(f"[{self.video_id}] Error in road debris detection: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
+                
                 # Run lane detection if enabled
                 if self.model_settings.get("lane_detection", True):
                     # Process lane detection
                     try:
                         lanes, processed_frame = self.lane_detector.detect_lanes(processed_frame)
+                        
+                        # 每指定时间更新一次区域
+                        current_time = time.time()
+                        if current_time - self.last_region_update > self.region_generator.region_update_interval and lanes:
+                            # 生成并更新区域
+                            if self.region_generator.region_update_enabled:
+                                self.region_generator.generate_regions(lanes, processed_frame.shape, self.area_manager)
+                                self.last_region_update = current_time
                     except Exception as e:
                         print(f"[{self.video_id}] Error in lane detection: {str(e)}")
                         import traceback
@@ -641,6 +682,12 @@ class VideoProcessorMP(multiprocessing.Process):
                     self.model_settings["lane_detection"] = not self.model_settings["lane_detection"]
                     status = "ENABLED" if self.model_settings["lane_detection"] else "DISABLED"
                     print(f"[{self.video_id}] Lane detection {status}")
+                
+                # Handle road debris detection toggle
+                if key == ord('x'):
+                    self.model_settings["road_debris_detection"] = not self.model_settings["road_debris_detection"]
+                    status = "ENABLED" if self.model_settings["road_debris_detection"] else "DISABLED"
+                    print(f"[{self.video_id}] Road debris detection {status}")
                 
                 # Handle display scaling controls
                 if key == ord('+') or key == ord('='):

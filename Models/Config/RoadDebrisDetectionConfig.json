@@ -1,0 +1,21 @@
+{
+  "description": "道路抛洒物检测配置文件",
+  "version": "1.0",
+  "date": "2026-01-30",
+  "parameters": {
+    "# 模型参数": "",
+    "model_path": "weights/Road_Debris_Detection/best.pt",
+    
+    "# 检测参数": "",
+    "conf_threshold": 0.3,
+    "cooldown": 30,
+    "frame_skip": 3,
+    
+    "# 抛洒物检测参数": "",
+    "min_area": 500,
+    
+    "# 历史记录参数": "",
+    "debris_history_max_length": 5,
+    "debris_distance_threshold": 100
+  }
+}

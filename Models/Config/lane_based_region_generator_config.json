@@ -1,0 +1,26 @@
+{
+  "description": "基于车道线几何关系的区域生成器配置文件",
+  "version": "1.0",
+  "date": "2026-01-30",
+  "parameters": {
+    "# 基本参数": "",
+    "generation_interval": 2.0,
+    "region_update_interval": 5.0,
+    
+    "# 消失点计算参数": "",
+    "lane_extension_factor": 10.0,
+    
+    "# 车道宽度计算参数": "",
+    "default_lane_width": 100,
+    
+    "# 应急车道识别参数": "",
+    "emergency_lane_width_threshold": 1.2,
+    
+    "# 速度检测线生成参数": "",
+    "speed_line_count": 5,
+    "speed_line_spacing_factor": 6,
+    
+    "# 区域更新参数": "",
+    "region_update_enabled": true
+  }
+}
