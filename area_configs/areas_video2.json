@@ -115,118 +115,26 @@
       "properties": {}
     }
   ],
-  "LEFT_LANE": [
+  "LEFT_LANE": [],
+  "CENTER_LANE": [
     {
       "points": [
         [
-          593,
+          589,
           360
         ],
         [
-          436,
+          434,
           720
         ]
       ],
-      "type": "LEFT_LANE",
+      "type": "CENTER_LANE",
       "enabled": true,
       "properties": {}
     }
   ],
-  "CENTER_LANE": [],
-  "RIGHT_LANE": [
-    {
-      "points": [
-        [
-          718,
-          360
-        ],
-        [
-          857,
-          720
-        ]
-      ],
-      "type": "RIGHT_LANE",
-      "enabled": true,
-      "properties": {}
-    }
-  ],
-  "SPEED": [
-    {
-      "points": [
-        [
-          389,
-          600
-        ],
-        [
-          909,
-          600
-        ]
-      ],
-      "type": "SPEED",
-      "enabled": true,
-      "properties": {}
-    },
-    {
-      "points": [
-        [
-          343,
-          480
-        ],
-        [
-          961,
-          480
-        ]
-      ],
-      "type": "SPEED",
-      "enabled": true,
-      "properties": {}
-    },
-    {
-      "points": [
-        [
-          297,
-          360
-        ],
-        [
-          1014,
-          360
-        ]
-      ],
-      "type": "SPEED",
-      "enabled": true,
-      "properties": {}
-    },
-    {
-      "points": [
-        [
-          250,
-          240
-        ],
-        [
-          1066,
-          240
-        ]
-      ],
-      "type": "SPEED",
-      "enabled": true,
-      "properties": {}
-    },
-    {
-      "points": [
-        [
-          276,
-          120
-        ],
-        [
-          1046,
-          120
-        ]
-      ],
-      "type": "SPEED",
-      "enabled": true,
-      "properties": {}
-    }
-  ],
+  "RIGHT_LANE": [],
+  "SPEED": [],
   "EMERGENCY_LANE": [
     {
       "points": [

@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "description": "车道区域生成器配置文件",
+  "date": "2026-02-01",
+  
+  "parameters": {
+    "# 基本参数": "",
+    "generation_interval": 2.0,
+    "region_update_interval": 5.0,
+    
+    "# 速度检测线参数": "",
+    "speed_line_count": 3,
+    "speed_line_positions": [0.3, 0.5, 0.7],
+    "speed_line_width_factor": 0.8,
+    
+    "# 应急车道参数": "",
+    "emergency_lane_width_factor": 1.5,
+    "default_lane_width": 100,
+    
+    "# 区域更新参数": "",
+    "region_update_enabled": true
+  }
+}
