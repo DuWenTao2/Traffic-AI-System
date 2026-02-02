@@ -1,0 +1,27 @@
+{
+  "version": "1.1",
+  "description": "车道区域生成器配置文件 - 双向道路优化",
+  "date": "2026-02-01",
+  
+  "parameters": {
+    "# 基本参数": "",
+    "generation_interval": 2.0,
+    "region_update_interval": 5.0,
+    
+    "# 速度检测线参数": "",
+    "speed_line_count": 2,
+    "speed_line_positions": [0.4, 0.6],
+    "speed_line_width_factor": 0.8,
+    
+    "# 应急车道参数": "",
+    "emergency_lane_width_factor": 0.8,
+    "default_lane_width": 80,
+    
+    "# 双向道路参数": "",
+    "enable_bidirectional_separation": true,
+    "center_margin_ratio": 0.1,
+    
+    "# 区域更新参数": "",
+    "region_update_enabled": true
+  }
+}

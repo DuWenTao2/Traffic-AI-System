@@ -1,26 +1,103 @@
 {
-  "description": "车道线检测配置文件",
-  "version": "1.0",
-  "date": "2026-01-28",
-  "parameters": {
-    "# Canny边缘检测参数": "",
-    "canny_threshold1": 40,
-    "canny_threshold2": 120,
-    
-    "# Hough变换参数": "",
-    "hough_rho": 1,
-    "hough_theta": 0.0174533,
-    "hough_threshold": 80,
-    "hough_min_line_length": 80,
-    "hough_max_line_gap": 50,
-    
-    "# 颜色阈值参数": "",
-    "white_lower": [200, 200, 200],
-    "white_upper": [255, 255, 255],
-    "yellow_lower": [100, 100, 0],
-    "yellow_upper": [200, 200, 100],
-    
-    "# 历史记录参数": "",
-    "history_length": 5
+  "version": "2.0",
+  "description": "车道线检测优化版配置文件",
+  "date": "2026-01-31",
+  
+  "preprocessing": {
+    "color_enhancement": {
+      "enabled": true,
+      "clahe_clip_limit": 2.0,
+      "clahe_grid_size": [8, 8]
+    },
+    "shadow_removal": {
+      "enabled": true,
+      "kernel_size": 15,
+      "threshold_k": 0.5
+    },
+    "multiscale": {
+      "enabled": true,
+      "levels": 3
+    }
+  },
+  
+  "edge_detection": {
+    "adaptive_canny": {
+      "enabled": true,
+      "sigma_normal": 0.25,
+      "sigma_low": 0.40,
+      "sigma_high": 0.15
+    },
+    "color_threshold": {
+      "enabled": true,
+      "white_lower": [180, 180, 180],
+      "white_upper": [255, 255, 255],
+      "yellow_lower": [10, 50, 100],
+      "yellow_upper": [40, 255, 255]
+    },
+    "hough_transform": {
+      "rho": 1,
+      "theta": 0.0174533,
+      "threshold": 40,
+      "min_line_length": 40,
+      "max_line_gap": 30
+    }
+  },
+  
+  "bidirectional": {
+    "enabled": true,
+    "camera_offset": 0,
+    "center_margin": 0.1,
+    "dynamic_roi": true
+  },
+  
+  "fitting": {
+    "method": "adaptive",
+    "ransac": {
+      "enabled": true,
+      "threshold": 8.0,
+      "max_iterations": 200
+    },
+    "curve_threshold": 0.5,
+    "geometry_constraints": {
+      "enabled": true,
+      "parallel_threshold": 20,
+      "width_ratio_range": [0.5, 1.8],
+      "vanishing_tolerance": 80
+    }
+  },
+  
+  "tracking": {
+    "kalman_filter": {
+      "enabled": true,
+      "process_noise": 0.05,
+      "measurement_noise": 0.2
+    },
+    "association": {
+      "method": "hungarian",
+      "max_distance": 150,
+      "max_angle_diff": 45
+    },
+    "confidence": {
+      "threshold": 0.4,
+      "weights": {
+        "edge": 0.2,
+        "color": 0.3,
+        "geometry": 0.2,
+        "temporal": 0.3
+      }
+    },
+    "max_missed_frames": 8
+  },
+  
+  "visualization": {
+    "lane_colors": {
+      "left": [0, 255, 0],
+      "right": [255, 0, 0],
+      "middle": [0, 255, 255],
+      "emergency": [0, 0, 255]
+    },
+    "line_thickness": 3,
+    "show_confidence": true,
+    "show_vanishing_point": true
   }
 }

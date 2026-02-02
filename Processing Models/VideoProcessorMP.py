@@ -74,8 +74,8 @@ speed_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(speed_module)
 SpeedDetector = speed_module.SpeedDetector
 
-# Import LaneBasedRegionGenerator
-from lane_based_region_generator import LaneBasedRegionGenerator
+# Import LaneRegionGenerator
+from lane_region_generator import LaneRegionGenerator
 
 # Import ParkingDetector module
 parking_module_path = os.path.join(parking_dir, "parking_Detctor.py")
@@ -187,8 +187,8 @@ class VideoProcessorMP(multiprocessing.Process):
             "road_debris_detection": False
         }
         
-        # Initialize LaneBasedRegionGenerator
-        self.region_generator = LaneBasedRegionGenerator(stream_id=video_id)
+        # Initialize LaneRegionGenerator
+        self.region_generator = LaneRegionGenerator(stream_id=video_id)
         self.last_region_update = 0
     
     def run(self):
