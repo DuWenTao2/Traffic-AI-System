@@ -1,91 +1,129 @@
 {
-  "SPEED": [
+  "DETECTION": [
     {
       "points": [
         [
-          350,
-          432
+          0,
+          0
         ],
         [
-          552,
-          432
+          960,
+          0
+        ],
+        [
+          960,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
         ]
       ],
-      "type": "SPEED",
+      "type": "DETECTION",
       "enabled": true,
-      "properties": {
-        "lane_id": 0,
-        "position": 0.4,
-        "source": "lane_based"
-      }
-    },
+      "properties": {}
+    }
+  ],
+  "PARKING": [
     {
       "points": [
         [
-          351,
-          288
+          0,
+          0
         ],
         [
-          553,
-          288
+          960,
+          0
+        ],
+        [
+          960,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
         ]
       ],
-      "type": "SPEED",
+      "type": "PARKING",
       "enabled": true,
-      "properties": {
-        "lane_id": 0,
-        "position": 0.6,
-        "source": "lane_based"
-      }
-    },
+      "properties": {}
+    }
+  ],
+  "TRAFFIC_LINE": [
     {
       "points": [
         [
-          510,
-          432
+          0,
+          0
         ],
         [
-          712,
-          432
+          960,
+          0
+        ],
+        [
+          960,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
         ]
       ],
-      "type": "SPEED",
+      "type": "TRAFFIC_LINE",
       "enabled": true,
-      "properties": {
-        "lane_id": 1,
-        "position": 0.4,
-        "source": "lane_based"
-      }
-    },
+      "properties": {}
+    }
+  ],
+  "TRAFFIC_SIGN": [
     {
       "points": [
         [
-          465,
-          288
+          0,
+          0
         ],
         [
-          667,
-          288
+          960,
+          0
+        ],
+        [
+          960,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
         ]
       ],
-      "type": "SPEED",
+      "type": "TRAFFIC_SIGN",
       "enabled": true,
-      "properties": {
-        "lane_id": 1,
-        "position": 0.6,
-        "source": "lane_based"
-      }
+      "properties": {}
     }
   ],
   "LEFT_LANE": [
     {
       "points": [
         [
-          396,
+          391,
           360
         ],
         [
-          339,
+          354,
           720
         ]
       ],
@@ -93,10 +131,10 @@
       "enabled": true,
       "properties": {
         "direction": "down",
-        "angle": 98.99714342106506,
-        "length": 364.4845675745408,
-        "slope": -0.15833333333333333,
-        "confidence": 0.8249012342412074
+        "angle": 95.86812856541047,
+        "length": 361.8963940135353,
+        "slope": -0.10277777777777777,
+        "confidence": 0.8362019495690909
       }
     }
   ],
@@ -104,11 +142,11 @@
     {
       "points": [
         [
-          508,
+          513,
           360
         ],
         [
-          559,
+          562,
           720
         ]
       ],
@@ -116,10 +154,10 @@
       "enabled": true,
       "properties": {
         "direction": "down",
-        "angle": 81.93675383430275,
-        "length": 363.5945544146667,
-        "slope": 0.14166666666666666,
-        "confidence": 0.8281778877479999
+        "angle": 82.2490389594696,
+        "length": 363.319418693799,
+        "slope": 0.1361111111111111,
+        "confidence": 0.8292916409160211
       }
     }
   ],
@@ -127,11 +165,11 @@
     {
       "points": [
         [
-          670,
+          665,
           360
         ],
         [
-          845,
+          810,
           720
         ]
       ],
@@ -139,10 +177,88 @@
       "enabled": true,
       "properties": {
         "direction": "down",
-        "angle": 64.07509849244555,
-        "length": 400.2811511925087,
-        "slope": 0.4861111111111111,
-        "confidence": 0.7787533734147309
+        "angle": 68.06151953229354,
+        "length": 388.1043674065006,
+        "slope": 0.4027777777777778,
+        "confidence": 0.7874099229620561
+      }
+    }
+  ],
+  "SPEED": [
+    {
+      "points": [
+        [
+          362,
+          432
+        ],
+        [
+          544,
+          432
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {
+        "lane_id": 0,
+        "position": 0.4,
+        "source": "lane_based"
+      }
+    },
+    {
+      "points": [
+        [
+          359,
+          288
+        ],
+        [
+          542,
+          288
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {
+        "lane_id": 0,
+        "position": 0.6,
+        "source": "lane_based"
+      }
+    },
+    {
+      "points": [
+        [
+          517,
+          432
+        ],
+        [
+          699,
+          432
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {
+        "lane_id": 1,
+        "position": 0.4,
+        "source": "lane_based"
+      }
+    },
+    {
+      "points": [
+        [
+          478,
+          288
+        ],
+        [
+          660,
+          288
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {
+        "lane_id": 1,
+        "position": 0.6,
+        "source": "lane_based"
       }
     }
   ],

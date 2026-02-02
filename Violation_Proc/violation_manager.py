@@ -182,6 +182,9 @@ class ViolationManager:
             # Store the full violation type info in the record but use simple ID
             violation_id = unique_id
 
+            # Process bounding box coordinates
+            bounding_box = self._process_bounding_box(bbox)
+            
             # Save violation snapshot (only car closeup with wider margin for non-accidents)
             snapshot_path = self._save_violation_snapshot(
                 frame, bbox, vehicle_id, violation_type, violation_id, save_full_frame)
@@ -198,6 +201,7 @@ class ViolationManager:
                 'violation_id': violation_id,
                 'vehicle_id': vehicle_id,
                 'snapshot_path': snapshot_path,
+                'bounding_box': bounding_box,
                 'extra_info': extra_info or {}
             }
 
@@ -910,6 +914,56 @@ class ViolationManager:
         
         except Exception as e:
             print(f"[{self.stream_id}] Error updating license plate in CSV: {str(e)}")
+    
+    def _process_bounding_box(self, bbox):
+        """Process and standardize bounding box coordinates
+        
+        Args:
+            bbox: Bounding box coordinates in format (x1, y1, x2, y2)
+            
+        Returns:
+            dict: Standardized bounding box with x, y, width, height
+        """
+        if bbox is None:
+            # Return default values if no bbox provided
+            return {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0
+            }
+        
+        try:
+            # Ensure bbox has 4 elements
+            if len(bbox) >= 4:
+                x1, y1, x2, y2 = map(float, bbox[:4])
+                
+                # Calculate width and height
+                width = max(0, x2 - x1)
+                height = max(0, y2 - y1)
+                
+                return {
+                    "x": x1,
+                    "y": y1,
+                    "width": width,
+                    "height": height
+                }
+            else:
+                # Return default values if bbox format is invalid
+                return {
+                    "x": 0,
+                    "y": 0,
+                    "width": 0,
+                    "height": 0
+                }
+        except (ValueError, TypeError):
+            # Return default values if conversion fails
+            return {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0
+            }
     
     def _save_violation_snapshot(self, frame, bbox, vehicle_id, violation_type, violation_id, save_full_frame=False):
         """Save a snapshot of the violation - focused on vehicle with wider margin"""
