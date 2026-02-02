@@ -9,7 +9,7 @@ from ultralytics import YOLO
 import logging
 
 class RoadDebrisDetector:
-    def __init__(self, stream_id="default", model_path=None, conf_threshold=0.3, cooldown=30, frame_skip=3, violation_manager=None, **kwargs):
+    def __init__(self, stream_id="default", model_path=None, conf_threshold=0.2, cooldown=5, frame_skip=2, violation_manager=None, **kwargs):
         self.stream_id = stream_id
         self.violation_manager = violation_manager
         
@@ -45,9 +45,20 @@ class RoadDebrisDetector:
             print(f"[{self.stream_id}] Detection confidence threshold: {self.conf_threshold}")
             print(f"[{self.stream_id}] Detection cooldown period: {self.cooldown} seconds")
             print(f"[{self.stream_id}] Road debris detection is DISABLED by default. Press 'x' to toggle.")
+            
+            # 直接从模型提取类别名称
+            if hasattr(self.model, 'names') and self.model.names:
+                # 直接使用模型中的类别名称
+                self.debris_classes = list(self.model.names.values()) if isinstance(self.model.names, dict) else self.model.names
+                print(f"[{self.stream_id}] Detected classes: {self.debris_classes}")
+            else:
+                # 回退到默认抛洒物类别
+                self.debris_classes = ['0']
+                print(f"[{self.stream_id}] Using default debris classes: {self.debris_classes}")
         except Exception as e:
             print(f"[{self.stream_id}] Error loading road debris detection model: {str(e)}")
             self.model = None
+            self.debris_classes = ['Debris']
     
     def _set_default_parameters(self):
         """设置代码默认参数"""
@@ -83,10 +94,12 @@ class RoadDebrisDetector:
                 if 'parameters' in config:
                     params = config['parameters']
                     # 跳过注释键（以#开头的键）
+                    loaded_params = {}
                     for key, value in params.items():
                         if not key.startswith('#') and hasattr(self, key):
                             setattr(self, key, value)
-                    print(f"[{self.stream_id}] Road debris detection parameters loaded from config file")
+                            loaded_params[key] = value
+                    print(f"[{self.stream_id}] Road debris detection parameters loaded from config file: {loaded_params}")
             except Exception as e:
                 print(f"[{self.stream_id}] Error loading config file: {str(e)}")
         else:
@@ -152,7 +165,7 @@ class RoadDebrisDetector:
                 class_name = results.names[cls]
                 
                 # 检查是否是抛洒物且置信度足够
-                if conf >= self.conf_threshold:
+                if class_name in self.debris_classes and conf >= self.conf_threshold:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
                     box_center = ((x1 + x2) // 2, (y1 + y2) // 2)
                     box_area = (x2 - x1) * (y2 - y1)
