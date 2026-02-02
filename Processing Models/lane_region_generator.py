@@ -34,16 +34,20 @@ class LaneRegionGenerator:
         self.region_update_interval = 5.0  # 区域更新间隔
         
         # 速度检测线参数
-        self.speed_line_count = 3  # 每条车道的速度检测线数量
-        self.speed_line_positions = [0.3, 0.5, 0.7]  # 速度检测线在图像中的相对位置
+        self.speed_line_count = 2  # 每条车道的速度检测线数量
+        self.speed_line_positions = [0.4, 0.6]  # 速度检测线在图像中的相对位置
         self.speed_line_width_factor = 0.8  # 速度检测线长度与车道宽度的比例
         
         # 应急车道参数
-        self.emergency_lane_width_factor = 1.5  # 应急车道宽度与普通车道的比例
-        self.default_lane_width = 100  # 默认车道宽度（像素）
+        self.emergency_lane_width_factor = 0.8  # 应急车道宽度与普通车道的比例
+        self.default_lane_width = 80  # 默认车道宽度（像素）
         
         # 区域更新参数
         self.region_update_enabled = True  # 是否启用区域更新
+        
+        # 双向道路参数
+        self.enable_bidirectional_separation = True  # 启用双向分离
+        self.center_margin_ratio = 0.1  # 中心区域边距比例
     
     def _load_config_parameters(self):
         """从配置文件加载参数"""
@@ -203,7 +207,7 @@ class LaneRegionGenerator:
         return lane_widths
     
     def _generate_speed_lines(self, sorted_lanes, frame_shape, avg_lane_width):
-        """生成速度检测线
+        """生成速度检测线 - 确保稳定显示4根红色速度检测线
         
         参数:
             sorted_lanes: 排序后的车道线列表
@@ -215,9 +219,36 @@ class LaneRegionGenerator:
         """
         speed_lines = []
         
-        if not sorted_lanes or len(sorted_lanes) < 2:
-            return speed_lines
+        # 强制使用 fallback 机制生成速度检测线，确保显示
+        fallback_lines = self._generate_fallback_speed_lines(frame_shape)
+        speed_lines.extend(fallback_lines)
         
+        # 如果有车道线数据，再生成基于车道线的检测线
+        if sorted_lanes and len(sorted_lanes) >= 2:
+            generated_lines = self._generate_lines_for_lanes(
+                sorted_lanes, frame_shape, avg_lane_width
+            )
+            # 优先使用基于车道线的检测线
+            if generated_lines:
+                speed_lines = generated_lines[:4]
+                # 确保至少4根检测线
+                if len(speed_lines) < 4:
+                    speed_lines.extend(fallback_lines[:4 - len(speed_lines)])
+        
+        return speed_lines
+    
+    def _generate_lines_for_lanes(self, sorted_lanes, frame_shape, avg_lane_width):
+        """为车道生成速度检测线
+        
+        参数:
+            sorted_lanes: 排序后的车道线列表
+            frame_shape: 图像形状
+            avg_lane_width: 平均车道宽度
+            
+        返回:
+            speed_lines: 速度检测线列表
+        """
+        speed_lines = []
         height, width = frame_shape[:2]
         
         # 为每条车道生成速度检测线
@@ -253,14 +284,56 @@ class LaneRegionGenerator:
                         'enabled': True,
                         'properties': {
                             'lane_id': i,
-                            'position': pos
+                            'position': pos,
+                            'source': 'lane_based'
                         }
                     })
         
         return speed_lines
     
+    def _generate_fallback_speed_lines(self, frame_shape):
+        """生成 fallback 速度检测线 - 确保稳定显示4根红色速度检测线
+        
+        参数:
+            frame_shape: 图像形状
+            
+        返回:
+            speed_lines: 速度检测线列表
+        """
+        speed_lines = []
+        height, width = frame_shape[:2]
+        
+        # 生成4根均匀分布的速度检测线，确保在图像中心
+        positions = [0.3, 0.4, 0.6, 0.7]
+        line_length = width * 0.3  # 增加线长，确保可见
+        center_x = width // 2
+        
+        for i, pos in enumerate(positions):
+            y = int(height * (1 - pos))
+            x1 = int(center_x - line_length / 2)
+            x2 = int(center_x + line_length / 2)
+            
+            # 确保检测线在图像范围内
+            x1 = max(0, x1)
+            x2 = min(width - 1, x2)
+            
+            if x1 < x2:
+                speed_lines.append({
+                    'points': [(x1, y), (x2, y)],
+                    'type': 'SPEED',
+                    'enabled': True,
+                    'properties': {
+                        'lane_id': i % 2,
+                        'position': pos,
+                        'source': 'fallback',
+                        'color': (255, 0, 0)  # 明确设置为红色
+                    }
+                })
+        
+        return speed_lines
+    
     def _generate_wrong_direction_lines(self, sorted_lanes):
-        """生成逆向检测所需的车道线
+        """生成逆向检测所需的车道线 - 确保生成左右两侧逆向检测线
         
         参数:
             sorted_lanes: 排序后的车道线列表
@@ -277,63 +350,125 @@ class LaneRegionGenerator:
         if not sorted_lanes:
             return wrong_dir_lines
         
-        # 根据车道线数量分配类型
-        lane_count = len(sorted_lanes)
+        # 强制生成左侧逆向检测线
+        if len(sorted_lanes) >= 1:
+            left_lane = sorted_lanes[0]
+            self._add_wrong_direction_line(wrong_dir_lines, 'LEFT_LANE', left_lane)
         
-        if lane_count >= 3:
-            # 左车道线
-            wrong_dir_lines['LEFT_LANE'].append({
-                'points': sorted_lanes[0].get('points', []),
-                'type': 'LEFT_LANE',
-                'enabled': True,
-                'properties': {}
-            })
-            
-            # 中心车道线
-            center_index = lane_count // 2
-            wrong_dir_lines['CENTER_LANE'].append({
-                'points': sorted_lanes[center_index].get('points', []),
-                'type': 'CENTER_LANE',
-                'enabled': True,
-                'properties': {}
-            })
-            
-            # 右车道线
-            wrong_dir_lines['RIGHT_LANE'].append({
-                'points': sorted_lanes[-1].get('points', []),
-                'type': 'RIGHT_LANE',
-                'enabled': True,
-                'properties': {}
-            })
-        elif lane_count == 2:
-            # 左车道线
-            wrong_dir_lines['LEFT_LANE'].append({
-                'points': sorted_lanes[0].get('points', []),
-                'type': 'LEFT_LANE',
-                'enabled': True,
-                'properties': {}
-            })
-            
-            # 右车道线
-            wrong_dir_lines['RIGHT_LANE'].append({
-                'points': sorted_lanes[1].get('points', []),
-                'type': 'RIGHT_LANE',
-                'enabled': True,
-                'properties': {}
-            })
-        elif lane_count == 1:
-            # 中心车道线
-            wrong_dir_lines['CENTER_LANE'].append({
-                'points': sorted_lanes[0].get('points', []),
-                'type': 'CENTER_LANE',
-                'enabled': True,
-                'properties': {}
-            })
+        # 生成中心逆向检测线
+        if len(sorted_lanes) >= 2:
+            center_index = len(sorted_lanes) // 2
+            center_lane = sorted_lanes[center_index]
+            self._add_wrong_direction_line(wrong_dir_lines, 'CENTER_LANE', center_lane)
+        
+        # 强制生成右侧逆向检测线
+        if len(sorted_lanes) >= 1:
+            right_lane = sorted_lanes[-1]
+            self._add_wrong_direction_line(wrong_dir_lines, 'RIGHT_LANE', right_lane)
         
         return wrong_dir_lines
     
+    def _add_wrong_direction_line(self, wrong_dir_lines, lane_type, lane):
+        """添加逆向检测线并计算方向属性 - 确保生成逆向检测线
+        
+        参数:
+            wrong_dir_lines: 逆向检测线字典
+            lane_type: 车道类型
+            lane: 车道线字典
+        """
+        points = lane.get('points', [])
+        if not points:
+            # 如果没有点数据，创建默认点
+            points = [(0, 0), (100, 100)]
+        
+        # 计算车道线方向属性
+        direction_properties = self._calculate_lane_direction(lane)
+        
+        wrong_dir_lines[lane_type].append({
+            'points': points,
+            'type': lane_type,
+            'enabled': True,
+            'properties': direction_properties
+        })
+    
+    def _calculate_lane_direction(self, lane):
+        """计算车道线方向属性
+        
+        参数:
+            lane: 车道线字典
+            
+        返回:
+            properties: 方向属性字典
+        """
+        points = lane.get('points', [])
+        if len(points) < 2:
+            return {'direction': 'unknown'}
+        
+        p1 = np.array(points[0])
+        p2 = np.array(points[1])
+        
+        # 计算斜率
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        
+        # 计算方向角
+        angle = np.arctan2(dy, dx) * 180 / np.pi
+        
+        # 计算长度
+        length = np.linalg.norm(p2 - p1)
+        
+        # 确定方向
+        if dy < 0:  # 向上延伸
+            direction = 'up'
+        else:  # 向下延伸
+            direction = 'down'
+        
+        return {
+            'direction': direction,
+            'angle': angle,
+            'length': length,
+            'slope': dx / dy if dy != 0 else float('inf'),
+            'confidence': self._calculate_direction_confidence(lane)
+        }
+    
+    def _calculate_direction_confidence(self, lane):
+        """计算方向置信度
+        
+        参数:
+            lane: 车道线字典
+            
+        返回:
+            confidence: 置信度值 (0-1)
+        """
+        points = lane.get('points', [])
+        if len(points) < 2:
+            return 0.0
+        
+        p1 = np.array(points[0])
+        p2 = np.array(points[1])
+        
+        # 基于长度和斜率计算置信度
+        length = np.linalg.norm(p2 - p1)
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        
+        # 长度置信度 (越长越可信)
+        length_confidence = min(length / 500, 1.0)
+        
+        # 斜率置信度 (接近垂直车道线更可信)
+        if dy != 0:
+            slope_abs = abs(dx / dy)
+            slope_confidence = max(0, 1 - slope_abs / 2)
+        else:
+            slope_confidence = 1.0
+        
+        # 综合置信度
+        confidence = (length_confidence + slope_confidence) / 2
+        
+        return confidence
+    
     def _generate_emergency_lane_area(self, sorted_lanes, frame_shape, avg_lane_width):
-        """生成应急车道区域
+        """生成应急车道区域 - 支持双向道路，强制生成左右两侧
         
         参数:
             sorted_lanes: 排序后的车道线列表
@@ -350,19 +485,40 @@ class LaneRegionGenerator:
         
         height, width = frame_shape[:2]
         
-        # 选择最外侧车道线作为应急车道边界
-        # 优先选择最左侧车道线
-        emergency_lane = sorted_lanes[0]
-        is_left_emergency = True
+        # 强制生成左侧应急车道区域
+        left_emergency = self._create_emergency_area(
+            sorted_lanes[0], frame_shape, avg_lane_width, expand_left=True
+        )
+        if left_emergency:
+            emergency_area.append(left_emergency)
         
-        # 如果只有一条车道线，尝试向左侧扩展
-        if len(sorted_lanes) == 1:
-            emergency_lane = sorted_lanes[0]
+        # 强制生成右侧应急车道区域
+        right_emergency = self._create_emergency_area(
+            sorted_lanes[-1], frame_shape, avg_lane_width, expand_left=False
+        )
+        if right_emergency:
+            emergency_area.append(right_emergency)
         
-        # 获取应急车道的两个点
-        points = emergency_lane.get('points', [])
+        return emergency_area
+    
+    def _create_emergency_area(self, lane, frame_shape, avg_lane_width, expand_left=True):
+        """创建单个应急车道区域 - 修正扩展方向
+        
+        参数:
+            lane: 车道线字典
+            frame_shape: 图像形状
+            avg_lane_width: 平均车道宽度
+            expand_left: 是否向左扩展
+            
+        返回:
+            emergency_area: 应急车道区域字典
+        """
+        height, width = frame_shape[:2]
+        
+        # 获取车道线的两个点
+        points = lane.get('points', [])
         if len(points) != 2:
-            return emergency_area
+            return None
         
         p1 = np.array(points[0])
         p2 = np.array(points[1])
@@ -371,11 +527,11 @@ class LaneRegionGenerator:
         lane_dir = p2 - p1
         lane_dir = lane_dir / np.linalg.norm(lane_dir) if np.linalg.norm(lane_dir) > 0 else np.array([0, 1])
         
-        # 计算垂直方向向量
+        # 计算垂直方向向量（向右为正）
         perpendicular_dir = np.array([-lane_dir[1], lane_dir[0]])
         
-        # 根据应急车道位置调整方向
-        if is_left_emergency:
+        # 根据扩展方向调整（左侧应急车道向左扩展，右侧应急车道向右扩展）
+        if expand_left:
             perpendicular_dir = -perpendicular_dir
         
         # 计算应急车道区域的四个点
@@ -388,15 +544,17 @@ class LaneRegionGenerator:
         p3 = np.clip(p3, [0, 0], [width - 1, height - 1])
         p4 = np.clip(p4, [0, 0], [width - 1, height - 1])
         
-        # 确保点按顺序排列
-        emergency_area.append({
-            'points': [tuple(p1.astype(int)), tuple(p2.astype(int)), tuple(p4.astype(int)), tuple(p3.astype(int)), tuple(p1.astype(int))],
+        return {
+            'points': [tuple(p1.astype(int)), tuple(p2.astype(int)), 
+                       tuple(p4.astype(int)), tuple(p3.astype(int)), 
+                       tuple(p1.astype(int))],
             'type': 'EMERGENCY_LANE',
             'enabled': True,
-            'properties': {}
-        })
-        
-        return emergency_area
+            'properties': {
+                'side': 'left' if expand_left else 'right',
+                'direction': 'outward'  # 明确标记向外扩展
+            }
+        }
     
     def _update_area_manager(self, area_manager, speed_lines, wrong_dir_lines, emergency_area):
         """更新区域管理器
