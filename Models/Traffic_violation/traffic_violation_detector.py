@@ -25,6 +25,9 @@ class TrafficViolationDetector:
         
         # Avoid creating directories when not using violation_manager
         self.output_dir = None
+        
+        # Detection status flag
+        self.has_detection = False
     
     def setup_output_directory(self, base_dir=None):
         """Setup directory reference but don't create it unless using violation_manager"""
@@ -59,7 +62,12 @@ class TrafficViolationDetector:
             Processed frame with violation annotations
         """
         if not self.detection_enabled or frame is None:
+            # Reset detection status
+            self.has_detection = False
             return frame
+        
+        # Reset detection status for each frame
+        self.has_detection = False
         
         # Store tracked_objects reference for use in save_violation_evidence
         self.tracked_objects = tracked_objects
@@ -131,16 +139,19 @@ class TrafficViolationDetector:
                     prev_point, curr_point, AreaType.TRAFFIC_LINE)
                 
                 if crossing:
-                    # Check if this is a new violation
-                    if track_id not in self.violation_counters or self.violation_counters[track_id] <= 0:
-                        self.violation_counters[track_id] = self.violation_timeout
-                        
-                        # Add to violated IDs
-                        if track_id not in self.violated_ids:
-                            self.violated_ids.append(track_id)
+                        # Check if this is a new violation
+                        if track_id not in self.violation_counters or self.violation_counters[track_id] <= 0:
+                            self.violation_counters[track_id] = self.violation_timeout
                             
-                        # Save violation evidence
-                        self.save_violation_evidence(result_frame, track_id)
+                            # Add to violated IDs
+                            if track_id not in self.violated_ids:
+                                self.violated_ids.append(track_id)
+                                
+                            # Set detection status to True
+                            self.has_detection = True
+                            
+                            # Save violation evidence
+                            self.save_violation_evidence(result_frame, track_id)
                         
                         # Draw violation with thinner box
                         if 'box' in track_info:

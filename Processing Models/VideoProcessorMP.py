@@ -138,6 +138,10 @@ from RoadDebrisDetector import RoadDebrisDetector
 from Violation_Proc.violation_manager import ViolationManager
 from Violation_Proc.accident_alert_manager import AccidentAlertManager
 
+# Import video storage manager
+from VideoStorageManager import VideoStorageManager
+import json
+
 # Define vehicle, bike, person and other class IDs for YOLOv8
 VEHICLE_CLASSES = [0, 1, 2, 3, 4, 5, 7]  # person, car, motorcycle, airplane, bicycle, bus, truck
 BICYCLE_CLASSES = [4]  # bicycle
@@ -187,6 +191,11 @@ class VideoProcessorMP(multiprocessing.Process):
             "road_debris_detection": False
         }
         
+        # Video storage settings
+        self.video_storage_config = None
+        self.video_storage_manager = None
+        self.has_detection = False
+        
         # Initialize LaneRegionGenerator
         self.region_generator = LaneRegionGenerator(stream_id=video_id)
         self.last_region_update = 0
@@ -210,6 +219,28 @@ class VideoProcessorMP(multiprocessing.Process):
             # Get the accident alert manager reference from the violation manager
             self.accident_alert_manager = self.violation_manager.accident_alert_manager
             print(f"[{self.video_id}] Accident alert manager accessed from violation manager")
+            
+            # Load video storage configuration
+            config_path = os.path.join(parent_dir, "Models", "Config", "video_storage_config.json")
+            if os.path.exists(config_path):
+                try:
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        config_data = json.load(f)
+                        self.video_storage_config = config_data.get("parameters", {})
+                    print(f"[{self.video_id}] Video storage configuration loaded successfully")
+                except Exception as e:
+                    print(f"[{self.video_id}] Error loading video storage config: {str(e)}")
+                    self.video_storage_config = None
+            else:
+                print(f"[{self.video_id}] Video storage config file not found, using default settings")
+            
+            # Initialize video storage manager
+            self.video_storage_manager = VideoStorageManager(
+                stream_id=self.video_id,
+                camera_location=self.camera_location,
+                config=self.video_storage_config
+            )
+            print(f"[{self.video_id}] Video storage manager initialized")
             
             # Initialize the video source first to get frame dimensions
             self.initialize_source()
@@ -452,6 +483,9 @@ class VideoProcessorMP(multiprocessing.Process):
 
                 # Create a copy of the frame to work with
                 processed_frame = frame.copy()
+                
+                # Reset detection flag for this frame
+                self.has_detection = False
 
                 # Perform YOLO detection and tracking on the current frame with filtered classes
                 results = self.model.track(source=frame, persist=True, classes=VEHICLE_CLASSES + BICYCLE_CLASSES, verbose=False)
@@ -468,6 +502,9 @@ class VideoProcessorMP(multiprocessing.Process):
                     # Run accident detection on the current frame
                     # Pass tracked objects so accident detector can identify which vehicles are involved
                     processed_frame = self.accident_detector.detect_accidents(processed_frame, self.tracked_objects)
+                    # Check if accident was detected
+                    if hasattr(self.accident_detector, 'has_detection') and self.accident_detector.has_detection:
+                        self.has_detection = True
                 
                 # Run speed calculation on the current frame if enabled
                 if self.model_settings.get("speed_detection", True):
@@ -480,6 +517,9 @@ class VideoProcessorMP(multiprocessing.Process):
                         
                         # Calculate and display speeds
                         processed_frame = self.speed_detector.calculate_speed(processed_frame, self.tracked_objects)
+                        # Check if speed violation was detected
+                        if hasattr(self.speed_detector, 'has_detection') and self.speed_detector.has_detection:
+                            self.has_detection = True
                 
                 # Run parking violation detection if enabled
                 if self.model_settings.get("parking_detection", True):
@@ -487,6 +527,9 @@ class VideoProcessorMP(multiprocessing.Process):
                     if AreaType.PARKING in self.area_manager.areas and len(self.area_manager.areas[AreaType.PARKING]) > 0:
                         # Process parking violations
                         processed_frame = self.parking_detector.update_vehicles(processed_frame, self.tracked_objects, self.area_manager)
+                        # Check if parking violation was detected
+                        if hasattr(self.parking_detector, 'has_detection') and self.parking_detector.has_detection:
+                            self.has_detection = True
                 
                 # Run wrong direction detection if enabled
                 if self.model_settings.get("wrong_direction", True):
@@ -513,6 +556,9 @@ class VideoProcessorMP(multiprocessing.Process):
                             
                             processed_frame = self.wrong_direction_detector.process_frame(
                                 processed_frame, self.tracked_objects, self.area_manager)
+                            # Check if wrong direction violation was detected
+                            if hasattr(self.wrong_direction_detector, 'has_detection') and self.wrong_direction_detector.has_detection:
+                                self.has_detection = True
                         except Exception as e:
                             print(f"[{self.video_id}] Error in wrong direction detection: {str(e)}")
                             import traceback
@@ -534,6 +580,9 @@ class VideoProcessorMP(multiprocessing.Process):
                         try:
                             processed_frame = self.traffic_violation_detector.process_frame(
                                 processed_frame, self.tracked_objects, self.area_manager)
+                            # Check if traffic violation was detected
+                            if hasattr(self.traffic_violation_detector, 'has_detection') and self.traffic_violation_detector.has_detection:
+                                self.has_detection = True
                         except Exception as e:
                             print(f"[{self.video_id}] Error in traffic violation detection: {str(e)}")
                             import traceback
@@ -546,6 +595,9 @@ class VideoProcessorMP(multiprocessing.Process):
                         try:
                             processed_frame = self.helmet_detector.process_frame(
                                 processed_frame, self.tracked_objects, self.area_manager)
+                            # Check if helmet violation was detected
+                            if hasattr(self.helmet_detector, 'has_detection') and self.helmet_detector.has_detection:
+                                self.has_detection = True
                         except Exception as e:
                             print(f"[{self.video_id}] Error in helmet violation detection: {str(e)}")
                             import traceback
@@ -559,6 +611,9 @@ class VideoProcessorMP(multiprocessing.Process):
                         try:
                             processed_frame = self.illegal_crossing_detector.process_objects(
                                 processed_frame, self.tracked_objects, self.area_manager)
+                            # Check if illegal crossing violation was detected
+                            if hasattr(self.illegal_crossing_detector, 'has_detection') and self.illegal_crossing_detector.has_detection:
+                                self.has_detection = True
                         except Exception as e:
                             print(f"[{self.video_id}] Error in illegal crossing detection: {str(e)}")
                             import traceback
@@ -581,6 +636,9 @@ class VideoProcessorMP(multiprocessing.Process):
                         try:
                             processed_frame = self.emergency_lane_detector.process_objects(
                                 processed_frame, self.tracked_objects, self.area_manager)
+                            # Check if emergency lane violation was detected
+                            if hasattr(self.emergency_lane_detector, 'has_detection') and self.emergency_lane_detector.has_detection:
+                                self.has_detection = True
                         except Exception as e:
                             print(f"[{self.video_id}] Error in emergency lane detection: {str(e)}")
                             import traceback
@@ -594,6 +652,9 @@ class VideoProcessorMP(multiprocessing.Process):
                     # Process road debris detection
                     try:
                         processed_frame = self.road_debris_detector.detect_debris(processed_frame, self.tracked_objects)
+                        # Check if road debris violation was detected
+                        if hasattr(self.road_debris_detector, 'has_detection') and self.road_debris_detector.has_detection:
+                            self.has_detection = True
                     except Exception as e:
                         print(f"[{self.video_id}] Error in road debris detection: {str(e)}")
                         import traceback
@@ -627,6 +688,10 @@ class VideoProcessorMP(multiprocessing.Process):
                 # Add indicator for resize mode
                 cv2.putText(processed_frame, f"Display Scale: {self.display_scale:.2f}x", 
                           (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+                
+                # Process frame for video storage
+                if self.video_storage_manager:
+                    self.video_storage_manager.process_frame(processed_frame, has_detection=self.has_detection)
                 
                 # Resize the frame for display
                 display_frame = self.resize_for_display(processed_frame)
@@ -881,6 +946,14 @@ class VideoProcessorMP(multiprocessing.Process):
     def cleanup(self):
         """Clean up resources used by the video processor"""
         print(f"[{self.video_id}] Cleaning up resources...")
+        
+        # Clean up video storage manager
+        try:
+            if hasattr(self, 'video_storage_manager') and self.video_storage_manager:
+                print(f"[{self.video_id}] Cleaning up video storage manager...")
+                self.video_storage_manager.cleanup()
+        except Exception as e:
+            print(f"[{self.video_id}] Error cleaning up video storage manager: {str(e)}")
         
         # Release video resources
         try:

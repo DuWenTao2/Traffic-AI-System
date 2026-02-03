@@ -66,6 +66,9 @@ class WrongDirectionDetector:
         self.wrong_way_vehicles = set()     # Set of vehicle IDs going wrong way
         self.snapshots_counter = 0
         
+        # Detection status flag
+        self.has_detection = False
+        
         self.logger.info(f"Wrong direction detector initialized")
         self.logger.info(f"Detection will auto-enable when lane lines are configured")
     
@@ -276,6 +279,9 @@ class WrongDirectionDetector:
         """Process a frame to detect vehicles moving in wrong direction"""
         if frame is None:
             return None
+        
+        # Reset detection status for each frame
+        self.has_detection = False
         
         # Show detection status
         processed_frame = self._display_status(frame)
@@ -560,6 +566,9 @@ class WrongDirectionDetector:
     def _handle_new_violation(self, frame, vehicle_id, pair_id, vehicle_info):
         """Handle a newly detected wrong way violation"""
         self.wrong_way_vehicles.add(vehicle_id)
+        
+        # Set detection status to True
+        self.has_detection = True
         
         # Add detection timestamp to the vehicle info
         if 'detection_time' not in vehicle_info:

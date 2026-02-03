@@ -47,6 +47,9 @@ class HelmetViolationDetector:
         # Don't set up local directories
         self.output_dir = None
         self.log_file = None
+        
+        # Detection status flag
+        self.has_detection = False
     
     def setup_output_directory(self, base_dir=None):
         """Set directory reference but don't create it"""
@@ -131,7 +134,12 @@ class HelmetViolationDetector:
         """Process the current frame for helmet violations"""
         # Early return if conditions aren't met
         if not self.detection_enabled or frame is None or self.model is None:
+            # Reset detection status
+            self.has_detection = False
             return frame
+        
+        # Reset detection status for each frame
+        self.has_detection = False
         
         try:
             # Import here to avoid circular imports
@@ -210,6 +218,9 @@ class HelmetViolationDetector:
                                 
                                 # Log the violation - internally handles marking as processed
                                 if self.log_violation("NO_HELMET", track_id, image_path, self.tracked_vehicles[track_id]['type']):
+                                    # Set detection status to True
+                                    self.has_detection = True
+                                    
                                     # Mark as logged to avoid duplicate logs
                                     self.tracked_vehicles[track_id]['violation_logged'] = True
                                     

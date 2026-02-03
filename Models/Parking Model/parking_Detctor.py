@@ -18,6 +18,9 @@ class ParkingDetector:
         self.log_file = None
         self.output_dir = None
         
+        # Detection status flag
+        self.has_detection = False
+        
         print(f"[{self.stream_id}] Parking detector initialized with {violation_time_limit} second limit")
     
     def _setup_output_directory(self):
@@ -38,6 +41,9 @@ class ParkingDetector:
     def update_vehicles(self, frame, tracked_objects, area_manager):
        
         current_time = time.time()
+        
+        # Reset detection status for each frame
+        self.has_detection = False
         
         # Track vehicles currently in parking areas
         current_parked_ids = set()
@@ -84,6 +90,9 @@ class ParkingDetector:
                 # Mark as violation and log it
                 vehicle_data['violation'] = True
                 self._log_violation(track_id, vehicle_data['location'])
+                
+                # Set detection status to True
+                self.has_detection = True
                 
                 # Take a snapshot of the violation if it hasn't been taken yet
                 if not vehicle_data.get('snapshot_taken', False) and 'box' in vehicle_data:

@@ -72,6 +72,9 @@ class SpeedDetector:
         # Keep track of violations to avoid duplicates
         self.speed_violations = set()  # Set of vehicle IDs that have already been recorded for violation
         
+        # Detection status flag
+        self.has_detection = False
+        
         # Modified output directory handling for snapshots when needed
         self.output_dir = None
         
@@ -108,7 +111,12 @@ class SpeedDetector:
     def calculate_speed(self, frame, tracked_objects, fps=30):
         """Calculate speed for all tracked vehicles and identify violations"""
         if not self.enabled or not tracked_objects:
+            # Reset detection status
+            self.has_detection = False
             return frame
+        
+        # Reset detection status for each frame
+        self.has_detection = False
         
         # Store current frame for violation snapshots
         self.current_frame = frame.copy()  # Make a clean copy without any annotations
@@ -341,6 +349,9 @@ class SpeedDetector:
                             try:
                                 # Add to violations set to prevent duplicate recordings
                                 self.speed_violations.add(violation_key)
+                                
+                                # Set detection status to True
+                                self.has_detection = True
                                 
                                 # Get the vehicle bbox from tracked objects
                                 bbox = self._get_vehicle_bbox(vehicle_id)
