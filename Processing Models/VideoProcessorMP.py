@@ -166,8 +166,24 @@ class VideoProcessorMP(multiprocessing.Process):
         self.max_speed = max_speed
         self.min_speed = min_speed
         
-        # Add property for enabling/disabling detection models
-        self.model_settings = {
+        # Load detection settings from unified config file
+        self.model_settings = self._load_detection_settings()
+         # Video storage settings
+        self.video_storage_config = None
+        self.video_storage_manager = None
+        self.has_detection = False
+        
+        # Initialize LaneRegionGenerator
+        self.region_generator = LaneRegionGenerator(stream_id=video_id)
+        self.last_region_update = 0
+        
+    def _load_detection_settings(self):
+        """Load detection settings from unified config file"""
+        import json
+        config_file = os.path.join(parent_dir, "所有检测功能开关控制配置文件.json")
+        
+        # Default settings as fallback
+        default_settings = {
             "accident_detection": True,
             "helmet_detection": False,
             "speed_detection": True,
@@ -179,14 +195,25 @@ class VideoProcessorMP(multiprocessing.Process):
             "road_debris_detection": False
         }
         
-        # Video storage settings
-        self.video_storage_config = None
-        self.video_storage_manager = None
-        self.has_detection = False
+        try:
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    if "detection_settings" in config:
+                        settings = config["detection_settings"]
+                        # Validate and merge with defaults
+                        merged_settings = default_settings.copy()
+                        merged_settings.update(settings)
+                        print(f"[{self.video_id}] Loaded detection settings from {config_file}")
+                        return merged_settings
+            else:
+                print(f"[{self.video_id}] Config file not found, using default settings")
+        except Exception as e:
+            print(f"[{self.video_id}] Error loading config file: {str(e)}")
         
-        # Initialize LaneRegionGenerator
-        self.region_generator = LaneRegionGenerator(stream_id=video_id)
-        self.last_region_update = 0
+        return default_settings
+    
+
     
     def run(self):
         try:
