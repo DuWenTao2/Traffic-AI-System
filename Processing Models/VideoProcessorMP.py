@@ -41,6 +41,10 @@ helmet_violation_dir = os.path.join(models_dir, "Bike_Violations")
 if helmet_violation_dir not in sys.path:
     sys.path.append(helmet_violation_dir)
 
+driver_violation_dir = os.path.join(models_dir, "Driver_Violation_Detection")
+if driver_violation_dir not in sys.path:
+    sys.path.append(driver_violation_dir)
+
 illegal_crossing_dir = os.path.join(models_dir, "IllegalCrossing")
 if illegal_crossing_dir not in sys.path:
     sys.path.append(illegal_crossing_dir)
@@ -86,12 +90,12 @@ wrong_dir_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(wrong_dir_module)
 WrongDirectionDetector = wrong_dir_module.WrongDirectionDetector
 
-# Import HelmetViolationDetector module
-helmet_module_path = os.path.join(helmet_violation_dir, "helmet_detector.py")
-spec = importlib.util.spec_from_file_location("helmet_detector", helmet_module_path)
-helmet_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(helmet_module)
-HelmetViolationDetector = helmet_module.HelmetViolationDetector
+# Import DriverViolationDetector module
+driver_module_path = os.path.join(driver_violation_dir, "driver_violation_detector.py")
+spec = importlib.util.spec_from_file_location("driver_violation_detector", driver_module_path)
+driver_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(driver_module)
+DriverViolationDetector = driver_module.DriverViolationDetector
 
 # Import IllegalCrossingDetector module
 illegal_crossing_module_path = os.path.join(illegal_crossing_dir, "illegal_crossing_detector.py")
@@ -185,7 +189,7 @@ class VideoProcessorMP(multiprocessing.Process):
         # Default settings as fallback
         default_settings = {
             "accident_detection": True,
-            "helmet_detection": False,
+            "driver_violation_detection": False,
             "speed_detection": True,
             "parking_detection": True,
             "wrong_direction": True,
@@ -399,12 +403,12 @@ class VideoProcessorMP(multiprocessing.Process):
             )
             print(f"[{self.video_id}] Wrong direction detector initialized")
             
-            # Initialize helmet violation detector
-            self.helmet_detector = HelmetViolationDetector(
+            # Initialize driver violation detector
+            self.driver_violation_detector = DriverViolationDetector(
                 stream_id=self.video_id,
                 violation_manager=self.violation_manager
             )
-            print(f"[{self.video_id}] Helmet violation detector initialized")
+            print(f"[{self.video_id}] Driver violation detector initialized")
             
             # Initialize illegal crossing detector
             self.illegal_crossing_detector = IllegalCrossingDetector(
@@ -576,18 +580,18 @@ class VideoProcessorMP(multiprocessing.Process):
                         # Keeping the logic to check for wrong direction lines but not displaying messages
                         pass
                 
-                # Run helmet violation detection if enabled
-                if self.model_settings.get("helmet_detection", True):
+                # Run driver violation detection if enabled
+                if self.model_settings.get("driver_violation_detection", True):
                     if AreaType.DETECTION in self.area_manager.areas and len(self.area_manager.areas[AreaType.DETECTION]) > 0:
-                        # Process helmet violations
+                        # Process driver violations
                         try:
-                            processed_frame = self.helmet_detector.process_frame(
+                            processed_frame = self.driver_violation_detector.process_frame(
                                 processed_frame, self.tracked_objects, self.area_manager)
-                            # Check if helmet violation was detected
-                            if hasattr(self.helmet_detector, 'has_detection') and self.helmet_detector.has_detection:
+                            # Check if driver violation was detected
+                            if hasattr(self.driver_violation_detector, 'has_detection') and self.driver_violation_detector.has_detection:
                                 self.has_detection = True
                         except Exception as e:
-                            print(f"[{self.video_id}] Error in helmet violation detection: {str(e)}")
+                            print(f"[{self.video_id}] Error in driver violation detection: {str(e)}")
                             import traceback
                             traceback.print_exc()
                 
@@ -714,11 +718,11 @@ class VideoProcessorMP(multiprocessing.Process):
                     status = "DISABLED" if self.accident_detector.alerts_disabled else "ENABLED"
                     print(f"[{self.video_id}] Accident alerts {status}")
                 
-                # Handle helmet detection toggle
+                # Handle driver violation detection toggle
                 if key == ord('h'):
-                    self.helmet_detector.toggle_detection()
-                    status = "ENABLED" if self.helmet_detector.detection_enabled else "DISABLED"
-                    print(f"[{self.video_id}] Helmet detection {status}")
+                    self.driver_violation_detector.toggle_detection()
+                    status = "ENABLED" if self.driver_violation_detector.detection_enabled else "DISABLED"
+                    print(f"[{self.video_id}] Driver violation detection {status}")
                 
                 # Handle illegal crossing detection toggle
                 if key == ord('i'):

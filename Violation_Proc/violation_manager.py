@@ -77,7 +77,7 @@ class ViolationManager:
         # Create type-specific subdirectories for each violation type
         self.violation_dirs = {}
         for violation_type in ["parking", "speed", "wrong_direction", 
-                              "traffic_light", "helmet", "illegal_crossing", "emergency_lane", "road_debris"]:
+                              "traffic_light", "helmet", "illegal_crossing", "emergency_lane", "road_debris", "driver"]:
             # Create type-specific folder inside snapshots directory
             type_dir = self.snapshots_dir / violation_type
             type_dir.mkdir(exist_ok=True)
@@ -160,6 +160,11 @@ class ViolationManager:
         """Record a road debris violation"""
         return self._record_violation(frame, None, bbox, "road_debris", 
                                      extra_info={"debris_info": debris_info})
+    
+    def record_driver_violation(self, frame, vehicle_id, bbox, vehicle_type=None):
+        """Record a driver violation"""
+        return self._record_violation(frame, vehicle_id, bbox, "driver", 
+                                     extra_info={"vehicle_type": vehicle_type})
     
     def _record_violation(self, frame, vehicle_id, bbox, violation_type,
                          extra_info=None, save_full_frame=False):

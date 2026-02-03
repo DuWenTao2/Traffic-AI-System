@@ -1,7 +1,7 @@
 {
   "detection_settings": {
     "accident_detection": false, 
-    "helmet_detection": false,
+    "driver_violation_detection": true,
     "speed_detection": true,
     "parking_detection": true,
     "wrong_direction": true,
