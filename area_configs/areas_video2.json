@@ -119,11 +119,11 @@
     {
       "points": [
         [
-          395,
+          510,
           360
         ],
         [
-          358,
+          554,
           720
         ]
       ],
@@ -131,45 +131,23 @@
       "enabled": true,
       "properties": {
         "direction": "down",
-        "angle": 95.86812856541047,
-        "length": 361.8963940135353,
-        "slope": -0.10277777777777777,
-        "confidence": 0.8362019495690909
+        "angle": 83.03174325862146,
+        "length": 362.6789213615812,
+        "slope": 0.12222222222222222,
+        "confidence": 0.8321233658060256
       }
     }
   ],
-  "CENTER_LANE": [
-    {
-      "points": [
-        [
-          515,
-          360
-        ],
-        [
-          553,
-          720
-        ]
-      ],
-      "type": "CENTER_LANE",
-      "enabled": true,
-      "properties": {
-        "direction": "down",
-        "angle": 83.97442499163333,
-        "length": 362.0,
-        "slope": 0.10555555555555556,
-        "confidence": 0.8356111111111111
-      }
-    }
-  ],
+  "CENTER_LANE": [],
   "RIGHT_LANE": [
     {
       "points": [
         [
-          667,
+          510,
           360
         ],
         [
-          828,
+          554,
           720
         ]
       ],
@@ -177,10 +155,10 @@
       "enabled": true,
       "properties": {
         "direction": "down",
-        "angle": 65.90474555356624,
-        "length": 394.361509277972,
-        "slope": 0.44722222222222224,
-        "confidence": 0.7825559537224165
+        "angle": 83.03174325862146,
+        "length": 362.6789213615812,
+        "slope": 0.12222222222222222,
+        "confidence": 0.8321233658060256
       }
     }
   ],
@@ -188,49 +166,35 @@
     {
       "points": [
         [
-          361,
-          432
+          336,
+          503
         ],
         [
-          549,
-          432
+          624,
+          503
         ]
       ],
       "type": "SPEED",
       "enabled": true,
       "properties": {
         "lane_id": 0,
-        "position": 0.4,
-        "source": "lane_based"
-      }
-    },
-    {
-      "points": [
-        [
-          360,
-          288
-        ],
-        [
-          548,
-          288
+        "position": 0.3,
+        "source": "fallback",
+        "color": [
+          255,
+          0,
+          0
         ]
-      ],
-      "type": "SPEED",
-      "enabled": true,
-      "properties": {
-        "lane_id": 0,
-        "position": 0.6,
-        "source": "lane_based"
       }
     },
     {
       "points": [
         [
-          516,
+          336,
           432
         ],
         [
-          704,
+          624,
           432
         ]
       ],
@@ -239,26 +203,60 @@
       "properties": {
         "lane_id": 1,
         "position": 0.4,
-        "source": "lane_based"
+        "source": "fallback",
+        "color": [
+          255,
+          0,
+          0
+        ]
       }
     },
     {
       "points": [
         [
-          477,
+          336,
           288
         ],
         [
-          665,
+          624,
           288
         ]
       ],
       "type": "SPEED",
       "enabled": true,
       "properties": {
-        "lane_id": 1,
+        "lane_id": 0,
         "position": 0.6,
-        "source": "lane_based"
+        "source": "fallback",
+        "color": [
+          255,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "points": [
+        [
+          336,
+          216
+        ],
+        [
+          624,
+          216
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {
+        "lane_id": 1,
+        "position": 0.7,
+        "source": "fallback",
+        "color": [
+          255,
+          0,
+          0
+        ]
       }
     }
   ],

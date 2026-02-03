@@ -48,6 +48,17 @@ if __name__ == '__main__':
         #     "max_speed": 50,
         #     "min_speed": 15
         # }
+
+        #一个HTTP流配置
+        # {
+        #     "id": "highway_camera", 
+        #     "source": "https://traffic-cams.example.com/highway123",  # 公网流
+        #     "use_stream": True,
+        #     "location": "North Highway",
+        #     "coordinates": {"lat": 39.9142, "lng": 116.4174},
+        #     "max_speed": 100,
+        #     "min_speed": 20
+        # }
     ]
     
 

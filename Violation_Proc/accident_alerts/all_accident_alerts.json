@@ -110,5 +110,21 @@
     "snapshot_paths": {
       "closeup": "snapshots\\accident_accident_video2_1769598753_191233.jpg"
     }
+  },
+  {
+    "date": "2026-02-03",
+    "time": "19:00:35",
+    "camera_id": "video2",
+    "camera_location": "Test Road Intersection",
+    "coordinates": {
+      "lat": 0.0,
+      "lng": 0.0
+    },
+    "latitude": 0.0,
+    "longitude": 0.0,
+    "accident_id": "accident_video2_1770116435",
+    "snapshot_paths": {
+      "closeup": "snapshots\\accident_accident_video2_1770116435_190035.jpg"
+    }
   }
 ]

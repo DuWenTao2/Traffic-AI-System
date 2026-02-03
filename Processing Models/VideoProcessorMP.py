@@ -37,10 +37,6 @@ wrong_dir = os.path.join(models_dir, "Wrong_dir")
 if wrong_dir not in sys.path:
     sys.path.append(wrong_dir)
 
-traffic_violation_dir = os.path.join(models_dir, "Traffic_violation")
-if traffic_violation_dir not in sys.path:
-    sys.path.append(traffic_violation_dir)
-
 helmet_violation_dir = os.path.join(models_dir, "Bike_Violations")
 if helmet_violation_dir not in sys.path:
     sys.path.append(helmet_violation_dir)
@@ -89,13 +85,6 @@ spec = importlib.util.spec_from_file_location("wrong_det", wrong_dir_module_path
 wrong_dir_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(wrong_dir_module)
 WrongDirectionDetector = wrong_dir_module.WrongDirectionDetector
-
-# Import TrafficViolationDetector module
-traffic_module_path = os.path.join(traffic_violation_dir, "traffic_violation_detector.py")
-spec = importlib.util.spec_from_file_location("traffic_violation_detector", traffic_module_path)
-traffic_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(traffic_module)
-TrafficViolationDetector = traffic_module.TrafficViolationDetector
 
 # Import HelmetViolationDetector module
 helmet_module_path = os.path.join(helmet_violation_dir, "helmet_detector.py")
@@ -181,7 +170,6 @@ class VideoProcessorMP(multiprocessing.Process):
         self.model_settings = {
             "accident_detection": True,
             "helmet_detection": False,
-            "traffic_violation": False, 
             "speed_detection": True,
             "parking_detection": True,
             "wrong_direction": True,
@@ -384,13 +372,6 @@ class VideoProcessorMP(multiprocessing.Process):
             )
             print(f"[{self.video_id}] Wrong direction detector initialized")
             
-            # Initialize traffic violation detector
-            self.traffic_violation_detector = TrafficViolationDetector(
-                stream_id=self.video_id,
-                violation_manager=self.violation_manager
-            )
-            print(f"[{self.video_id}] Traffic violation detector initialized")
-            
             # Initialize helmet violation detector
             self.helmet_detector = HelmetViolationDetector(
                 stream_id=self.video_id,
@@ -568,26 +549,6 @@ class VideoProcessorMP(multiprocessing.Process):
                         # Keeping the logic to check for wrong direction lines but not displaying messages
                         pass
                 
-                # Run traffic violation detection if enabled
-                if self.model_settings.get("traffic_violation", True):
-                    # Check if we have any traffic sign areas or traffic lines defined
-                    if ((AreaType.TRAFFIC_SIGN in self.area_manager.areas and 
-                        len(self.area_manager.areas[AreaType.TRAFFIC_SIGN]) > 0) or
-                        (AreaType.TRAFFIC_LINE in self.area_manager.areas and 
-                        len(self.area_manager.areas[AreaType.TRAFFIC_LINE]) > 0)):
-                        
-                        # Process traffic violations
-                        try:
-                            processed_frame = self.traffic_violation_detector.process_frame(
-                                processed_frame, self.tracked_objects, self.area_manager)
-                            # Check if traffic violation was detected
-                            if hasattr(self.traffic_violation_detector, 'has_detection') and self.traffic_violation_detector.has_detection:
-                                self.has_detection = True
-                        except Exception as e:
-                            print(f"[{self.video_id}] Error in traffic violation detection: {str(e)}")
-                            import traceback
-                            traceback.print_exc()
-                
                 # Run helmet violation detection if enabled
                 if self.model_settings.get("helmet_detection", True):
                     if AreaType.DETECTION in self.area_manager.areas and len(self.area_manager.areas[AreaType.DETECTION]) > 0:
@@ -725,10 +686,6 @@ class VideoProcessorMP(multiprocessing.Process):
                     self.accident_detector.toggle_alerts(duration=120)  # Disable alerts for 2 minutes
                     status = "DISABLED" if self.accident_detector.alerts_disabled else "ENABLED"
                     print(f"[{self.video_id}] Accident alerts {status}")
-                
-                # Handle traffic violation detection toggle
-                if key == ord('t'):
-                    self.traffic_violation_detector.toggle_detection()
                 
                 # Handle helmet detection toggle
                 if key == ord('h'):

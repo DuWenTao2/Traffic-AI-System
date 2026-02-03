@@ -474,9 +474,6 @@ class APIVideoProcessor:
             if hasattr(self.processor, 'helmet_detector'):
                 self.processor.helmet_detector.detection_enabled = settings.get('helmet_detection', True)
                 
-            if hasattr(self.processor, 'traffic_violation_detector'):
-                self.processor.traffic_violation_detector.detection_enabled = settings.get('traffic_violation', True)
-                
             if hasattr(self.processor, 'speed_detector'):
                 self.processor.speed_detector.detection_enabled = settings.get('speed_detection', True)
                 
