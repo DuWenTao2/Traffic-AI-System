@@ -1,18 +1,19 @@
+
 {
   "description": "视频存储配置文件",
   "version": "1.0",
-  "date": "2026-02-03",
+  "date": "2026-02-05",
   "parameters": {
     "# 基本配置": "",
     "storage_enabled": true,
     "storage_path": "Videos_Result",
     "video_format": "mp4",
-    "codec": "mp4v",
-    "fps": 30.0,
-    "video_duration": 60,
-    "pre_detection_buffer": 5,
-    "post_detection_buffer": 10,
-    "max_storage_size": 1024,
+    "codec": "avc1",
+    "fps": 20.0,
+    "video_duration": 45,
+    "pre_detection_buffer": 3,
+    "post_detection_buffer": 6,
+    "max_storage_size": 2048,
     "cleanup_enabled": true
   }
 }
