@@ -10,6 +10,17 @@
     "lane_detection": false,
     "road_debris_detection": false
   },
+  "video_sources": [
+    {
+      "id": "video2", 
+      "source": "TestingVideos\\test12.mp4",
+      "use_stream": false,
+      "location": "Test Road Intersection",
+      "coordinates": {"lat": 0.0, "lng": 0.0},
+      "max_speed": 5,      
+      "min_speed": 2       
+    }
+  ],
   "description": "所有检测功能的默认开启状态配置文件",
   "version": "1.0",
   "last_updated": "2026-02-03"

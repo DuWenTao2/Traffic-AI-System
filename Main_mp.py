@@ -4,6 +4,7 @@ import time
 import sys
 import os
 import multiprocessing
+import json
 
 # Add the Processing Models directory to the Python path
 processing_models_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Processing Models")
@@ -17,51 +18,61 @@ if __name__ == '__main__':
     # Configure multiprocessing for Windows
     multiprocessing.freeze_support()
     
-    # Define video sources - add more or change sources as needed
-    video_sources = [
-        # Example configuration for local video file with bidirectional speed limits
-        {
-            "id": "video2", 
-            "source": r"TestingVideos\test14.mp4",
-            "use_stream": False,
-            "location": "Test Road Intersection",
-            "coordinates": {"lat": 0.0, "lng": 0.0},
-            "max_speed": 10,      # 最高速度限制
-            "min_speed": 5       # 最低速度限制
-        },
-        # Example configuration with only max speed (min_speed will use default)
-        # {
-        #     "id": "video3", 
-        #     "source": r"TestingVideos\test03.mp4",
-        #     "use_stream": False,
-        #     "location": "Another Intersection",
-        #     "coordinates": {"lat": 0.0, "lng": 0.0},
-        #     "max_speed": 60      # Only max speed specified
-        # }
-        # Example configuration for YouTube stream
-        # {
-        #     "id": "YouTube Stream", 
-        #     "source": r"https://youtu.be/RGY622xx1s4",
-        #     "use_stream": True,
-        #     "location": "Downtown Crossing",
-        #     "coordinates": {"lat": 0.0, "lng": 0.0},
-        #     "max_speed": 50,
-        #     "min_speed": 15
-        # }
-
-        #一个HTTP流配置
-        # {
-        #     "id": "highway_camera", 
-        #     "source": "https://traffic-cams.example.com/highway123",  # 公网流
-        #     "use_stream": True,
-        #     "location": "North Highway",
-        #     "coordinates": {"lat": 39.9142, "lng": 116.4174},
-        #     "max_speed": 100,
-        #     "min_speed": 20
-        # }
-    ]
+    # Read configuration from JSON file
+    config_file = "所有检测功能开关控制配置文件.json"
+    if os.path.exists(config_file):
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        # Get video sources from config
+        video_sources = config.get('video_sources', [])
+        print(f"Loaded {len(video_sources)} video sources from configuration file")
+    else:
+        print(f"Warning: Configuration file '{config_file}' not found. Using empty video sources list.")
+        video_sources = []
     
+    # # Define video sources - add more or change sources as needed
+    # video_sources = [
+    #     # Example configuration for local video file with bidirectional speed limits
+    #     {
+    #         "id": "video2", 
+    #         "source": r"TestingVideos\test12.mp4",
+    #         "use_stream": False,
+    #         "location": "Test Road Intersection",
+    #         "coordinates": {"lat": 0.0, "lng": 0.0},
+    #         "max_speed": 5,      # 最高速度限制
+    #         "min_speed": 2       # 最低速度限制
+    #     },
+    #     # Example configuration with only max speed (min_speed will use default)
+    #     # {
+    #     #     "id": "video3", 
+    #     #     "source": r"TestingVideos\test03.mp4",
+    #     #     "use_stream": False,
+    #     #     "location": "Another Intersection",
+    #     #     "coordinates": {"lat": 0.0, "lng": 0.0},
+    #     #     "max_speed": 60      # Only max speed specified
+    #     # }
+    #     # Example configuration for YouTube stream
+    #     # {
+    #     #     "id": "YouTube Stream", 
+    #     #     "source": r"https://youtu.be/RGY622xx1s4",
+    #     #     "use_stream": True,
+    #     #     "location": "Downtown Crossing",
+    #     #     "coordinates": {"lat": 0.0, "lng": 0.0},
+    #     #     "max_speed": 50,
+    #     #     "min_speed": 15
+    #     # }
 
+    #     #一个HTTP流配置
+    #     # {
+    #     #     "id": "highway_camera", 
+    #     #     "source": "https://traffic-cams.example.com/highway123",  # 公网流
+    #     #     "use_stream": True,
+    #     #     "location": "North Highway",
+    #     #     "coordinates": {"lat": 39.9142, "lng": 116.4174},
+    #     #     "max_speed": 100,
+    #     #     "min_speed": 20
+    #     # }
+    # ]
     # Create and start video processor processes
     processors = []
 
