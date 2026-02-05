@@ -1,0 +1,74 @@
+启动: python .\Main_mp.py
+各种测试视频指令更换: 在所有检测功能开关控制配置文件.json文件中更换video_source即可
+"video_sources": [
+    {
+      "id": "test01", 
+      "source": "TestingVideos\\test01.mp4",
+      "use_stream": false,
+      "location": "Test Road Intersection",
+      "coordinates": {"lat": 0.0, "lng": 0.0},
+      "max_speed": 5,      
+      "min_speed": 2,
+      "description":"车辆速度/限速/违停测试视频"      
+    },
+    {
+      "id": "test05", 
+      "source": "TestingVideos\\test05.mp4",
+      "use_stream": false,
+      "location": "Test Road Intersection",
+      "coordinates": {"lat": 0.0, "lng": 0.0},
+      "max_speed": 5,      
+      "min_speed": 2,
+      "description":"车辆事故检测"      
+    },
+    {
+      "id": "test04", 
+      "source": "TestingVideos\\test04.mp4",
+      "use_stream": false,
+      "location": "Test Road Intersection",
+      "coordinates": {"lat": 0.0, "lng": 0.0},
+      "max_speed": 5,      
+      "min_speed": 2,
+      "description":"车辆非法占用应急车道检测"      
+    },
+    {
+      "id": "test11", 
+      "source": "TestingVideos\\test11.mp4",
+      "use_stream": false,
+      "location": "Test Road Intersection",
+      "coordinates": {"lat": 0.0, "lng": 0.0},
+      "max_speed": 5,      
+      "min_speed": 2,
+      "description":"抛洒物检测"      
+    },
+    {
+      "id": "test14", 
+      "source": "TestingVideos\\test14.mp4",
+      "use_stream": false,
+      "location": "Test Road Intersection",
+      "coordinates": {"lat": 0.0, "lng": 0.0},
+      "max_speed": 5,      
+      "min_speed": 2,
+      "description":"司机违规行为检测,即打电话"      
+    },
+    {
+      "id": "test12", 
+      "source": "TestingVideos\\test14.mp4",
+      "use_stream": false,
+      "location": "Test Road Intersection",
+      "coordinates": {"lat": 0.0, "lng": 0.0},
+      "max_speed": 5,      
+      "min_speed": 2,
+      "description":"车道线检测与生成线功能"      
+    },
+    {
+      "id": "test03", 
+      "source": "TestingVideos\\test14.mp4",
+      "use_stream": false,
+      "location": "Test Road Intersection",
+      "coordinates": {"lat": 0.0, "lng": 0.0},
+      "max_speed": 5,      
+      "min_speed": 2,
+      "description":"逆向/非法穿越检测"      
+    }
+  ],
