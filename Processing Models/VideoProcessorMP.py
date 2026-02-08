@@ -199,6 +199,9 @@ class VideoProcessorMP(multiprocessing.Process):
             "road_debris_detection": False
         }
         
+        # Default value for video interface control
+        self.show_video_interface = True
+        
         try:
             if os.path.exists(config_file):
                 with open(config_file, 'r', encoding='utf-8') as f:
@@ -209,7 +212,17 @@ class VideoProcessorMP(multiprocessing.Process):
                         merged_settings = default_settings.copy()
                         merged_settings.update(settings)
                         print(f"[{self.video_id}] Loaded detection settings from {config_file}")
-                        return merged_settings
+                    
+                    # Load video interface setting
+                    if "show_video_interface" in config:
+                        self.show_video_interface = config["show_video_interface"]
+                        print(f"[{self.video_id}] Video interface setting: {'Enabled' if self.show_video_interface else 'Disabled (Linux mode)'}")
+                        
+                        # In headless mode, disable auto-restart for local videos
+                        if not self.show_video_interface and not self.use_stream:
+                            self.auto_restart = False
+                            print(f"[{self.video_id}] Auto-restart disabled for headless local video processing")
+                    return merged_settings
             else:
                 print(f"[{self.video_id}] Config file not found, using default settings")
         except Exception as e:
@@ -224,8 +237,11 @@ class VideoProcessorMP(multiprocessing.Process):
             # Initialize components inside the process
             print(f"[{self.video_id}] Process starting...")
             
-            # Create window for this process
-            cv2.namedWindow(self.window_name)
+            # Create window for this process only if video interface is enabled
+            if self.show_video_interface:
+                cv2.namedWindow(self.window_name)
+            else:
+                print(f"[{self.video_id}] Running in Linux headless mode - no video interface")
             
             # Initialize unified violation manager
             self.violation_manager = ViolationManager(
@@ -360,16 +376,18 @@ class VideoProcessorMP(multiprocessing.Process):
             # Reset video to start
             self.video_reader.reset()
             
-            # Create custom mouse callback wrapper to handle coordinate scaling
-            def scaled_mouse_callback(event, x, y, flags, param):
-                # Scale coordinates back to original frame
-                orig_x = int(x / self.display_scale)
-                orig_y = int(y / self.display_scale)
-                # Pass the scaled coordinates to the area manager's callback
-                self.area_manager._mouse_callback(event, orig_x, orig_y, flags, param)
-            
-            # Set up our scaled mouse callback
-            cv2.setMouseCallback(self.window_name, scaled_mouse_callback)
+            # Only set up mouse callback if video interface is enabled
+            if self.show_video_interface:
+                # Create custom mouse callback wrapper to handle coordinate scaling
+                def scaled_mouse_callback(event, x, y, flags, param):
+                    # Scale coordinates back to original frame
+                    orig_x = int(x / self.display_scale)
+                    orig_y = int(y / self.display_scale)
+                    # Pass the scaled coordinates to the area manager's callback
+                    self.area_manager._mouse_callback(event, orig_x, orig_y, flags, param)
+                
+                # Set up our scaled mouse callback
+                cv2.setMouseCallback(self.window_name, scaled_mouse_callback)
             
             # Initialize accident detector with the dedicated accident alert manager
             self.accident_detector = AccidentDetector(
@@ -446,6 +464,10 @@ class VideoProcessorMP(multiprocessing.Process):
               # Make sure area manager is initialized with correct AreaType
             print(f"[{self.video_id}] Area manager initialized with available area types: {[t.name for t in AreaType]}")
             
+            # Add stream interruption detection variables
+            stream_interruption_count = 0
+            max_stream_interruptions = 5  # Allow 5 consecutive failed frames for streams
+            
             # Configure wrong direction detector with area manager
             # Configure lane lines
             self.wrong_direction_detector.configure_lane_lines(self.area_manager)
@@ -455,9 +477,23 @@ class VideoProcessorMP(multiprocessing.Process):
                     # Read frame using our VideoReader with error handling
                     ret, frame = self.video_reader.read()
                     
-                    # Check if we reached the end of the video
+                    # Check if we reached the end of the video or stream interruption
                     if not ret or frame is None:
                         print(f"[{self.video_id}] End of video reached or frame reading failed")
+                        
+                        # Handle stream interruption detection
+                        if self.use_stream:
+                            stream_interruption_count += 1
+                            print(f"[{self.video_id}] Stream interruption detected ({stream_interruption_count}/{max_stream_interruptions})")
+                            
+                            # If in headless mode and multiple stream interruptions, stop
+                            if not self.show_video_interface and stream_interruption_count >= max_stream_interruptions:
+                                print(f"[{self.video_id}] Maximum stream interruptions reached, stopping processing")
+                                break
+                            
+                            # Small delay before retrying stream
+                            time.sleep(0.5)
+                            continue
                         
                         # If auto-restart is enabled and it's not a stream, reset the video
                         if self.auto_restart and not self.use_stream:
@@ -492,6 +528,9 @@ class VideoProcessorMP(multiprocessing.Process):
                     # Try to recover by short sleep and continue
                     time.sleep(0.1)
                     continue
+                
+                # Reset stream interruption count on successful frame read
+                stream_interruption_count = 0
 
                 # Create a copy of the frame to work with
                 processed_frame = frame.copy()
@@ -615,6 +654,9 @@ class VideoProcessorMP(multiprocessing.Process):
                         try:
                             processed_frame = self.illegal_crossing_detector.process_objects(
                                 processed_frame, self.tracked_objects, self.area_manager)
+                            # Even in full screen mode, check if illegal crossing violation was detected
+                            if hasattr(self.illegal_crossing_detector, 'has_detection') and self.illegal_crossing_detector.has_detection:
+                                self.has_detection = True
                         except Exception as e:
                             print(f"[{self.video_id}] Error in illegal crossing detection (full screen): {str(e)}")
                             import traceback
@@ -685,100 +727,108 @@ class VideoProcessorMP(multiprocessing.Process):
                 if self.video_storage_manager:
                     self.video_storage_manager.process_frame(processed_frame, has_detection=self.has_detection)
                 
-                # Resize the frame for display
-                display_frame = self.resize_for_display(processed_frame)
-                
-                # Show the frame
-                cv2.imshow(self.window_name, display_frame)
-                
+                # Only resize and show frame if video interface is enabled
+                if self.show_video_interface:
+                    # Resize the frame for display
+                    display_frame = self.resize_for_display(processed_frame)
+                    
+                    # Show the frame
+                    cv2.imshow(self.window_name, display_frame)
+                    
                 # Periodically report progress
                 frame_count += 1
                 if frame_count % 100 == 0:
                     print(f"[{self.video_id}] Processed {frame_count} frames")
 
-                # Handle key events for exiting and area management
-                key = cv2.waitKey(1) & 0xFF
-                if key == 27 or key == ord('q'):  # ESC or q key - global exit
-                    print(f"[{self.video_id}] Exit key pressed")
-                    self.exit.set()
-                    break
-                
-                # Handle area management keys
-                self.area_manager.handle_key_events(key)
-                
-                # Handle accident detection toggle
-                if key == ord('a'):
-                    self.accident_detector.detection_enabled = not self.accident_detector.detection_enabled
-                    status = "ENABLED" if self.accident_detector.detection_enabled else "DISABLED"
-                    print(f"[{self.video_id}] Accident detection {status}")
-                
-                # Handle accident alert toggle (new)
-                if key == ord('r'):
-                    self.accident_detector.toggle_alerts(duration=120)  # Disable alerts for 2 minutes
-                    status = "DISABLED" if self.accident_detector.alerts_disabled else "ENABLED"
-                    print(f"[{self.video_id}] Accident alerts {status}")
-                
-                # Handle driver violation detection toggle
-                if key == ord('h'):
-                    self.driver_violation_detector.toggle_detection()
-                    status = "ENABLED" if self.driver_violation_detector.detection_enabled else "DISABLED"
-                    print(f"[{self.video_id}] Driver violation detection {status}")
-                
-                # Handle illegal crossing detection toggle
-                if key == ord('i'):
-                    self.model_settings["illegal_crossing"] = not self.model_settings["illegal_crossing"]
-                    status = "ENABLED" if self.model_settings["illegal_crossing"] else "DISABLED"
-                    print(f"[{self.video_id}] Illegal crossing detection {status}")
-                
-                # Handle lane detection toggle
-                if key == ord('z'):
-                    self.model_settings["lane_detection"] = not self.model_settings["lane_detection"]
-                    status = "ENABLED" if self.model_settings["lane_detection"] else "DISABLED"
-                    print(f"[{self.video_id}] Lane detection {status}")
-                
-                # Handle road debris detection toggle
-                if key == ord('x'):
-                    self.model_settings["road_debris_detection"] = not self.model_settings["road_debris_detection"]
-                    status = "ENABLED" if self.model_settings["road_debris_detection"] else "DISABLED"
-                    print(f"[{self.video_id}] Road debris detection {status}")
-                
-                # Handle display scaling controls
-                if key == ord('+') or key == ord('='):
-                    self.display_scale = min(1.0, self.display_scale + 0.05)
-                    self.display_width = int(self.original_width * self.display_scale)
-                    self.display_height = int(self.original_height * self.display_scale)
-                    print(f"[{self.video_id}] Display scale increased to {self.display_scale:.2f}x")
-                elif key == ord('-') or key == ord('_'):
-                    self.display_scale = max(0.2, self.display_scale - 0.05)
-                    self.display_width = int(self.original_width * self.display_scale)
-                    self.display_height = int(self.original_height * self.display_scale)
-                    print(f"[{self.video_id}] Display scale decreased to {self.display_scale:.2f}x")
-                
-                # Toggle auto-restart feature
-                elif key == ord('l'):
-                    self.auto_restart = not self.auto_restart
-                    status = "ENABLED" if self.auto_restart else "DISABLED"
-                    print(f"[{self.video_id}] Auto-restart {status}")
-                    # Display status on frame
-                    cv2.putText(processed_frame, f"Auto-restart: {status}", (20, 80),
-                              cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
-
-                # Clear all area configurations and restart
-                elif key == ord('d'):
-                    print(f"[{self.video_id}] Clearing all area configurations and restarting...")
-
-                    # Use the area manager's clear and restart method
-                    success = self.area_manager.clear_all_and_restart()
-
-                    if success:
-                        print(f"[{self.video_id}] Area configuration cleared and restarted successfully")
+                # Only handle key events if video interface is enabled
+                if self.show_video_interface:
+                    # Handle key events for exiting and area management
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == 27 or key == ord('q'):  # ESC or q key - global exit
+                        print(f"[{self.video_id}] Exit key pressed")
+                        self.exit.set()
+                        break
+                    
+                    # Handle area management keys
+                    self.area_manager.handle_key_events(key)
+                    
+                    # Handle accident detection toggle
+                    if key == ord('a'):
+                        self.accident_detector.detection_enabled = not self.accident_detector.detection_enabled
+                        status = "ENABLED" if self.accident_detector.detection_enabled else "DISABLED"
+                        print(f"[{self.video_id}] Accident detection {status}")
+                    
+                    # Handle accident alert toggle (new)
+                    if key == ord('r'):
+                        self.accident_detector.toggle_alerts(duration=120)  # Disable alerts for 2 minutes
+                        status = "DISABLED" if self.accident_detector.alerts_disabled else "ENABLED"
+                        print(f"[{self.video_id}] Accident alerts {status}")
+                    
+                    # Handle driver violation detection toggle
+                    if key == ord('h'):
+                        self.driver_violation_detector.toggle_detection()
+                        status = "ENABLED" if self.driver_violation_detector.detection_enabled else "DISABLED"
+                        print(f"[{self.video_id}] Driver violation detection {status}")
+                    
+                    # Handle illegal crossing detection toggle
+                    if key == ord('i'):
+                        self.model_settings["illegal_crossing"] = not self.model_settings["illegal_crossing"]
+                        status = "ENABLED" if self.model_settings["illegal_crossing"] else "DISABLED"
+                        print(f"[{self.video_id}] Illegal crossing detection {status}")
+                    
+                    # Handle lane detection toggle
+                    if key == ord('z'):
+                        self.model_settings["lane_detection"] = not self.model_settings["lane_detection"]
+                        status = "ENABLED" if self.model_settings["lane_detection"] else "DISABLED"
+                        print(f"[{self.video_id}] Lane detection {status}")
+                    
+                    # Handle road debris detection toggle
+                    if key == ord('x'):
+                        self.model_settings["road_debris_detection"] = not self.model_settings["road_debris_detection"]
+                        status = "ENABLED" if self.model_settings["road_debris_detection"] else "DISABLED"
+                        print(f"[{self.video_id}] Road debris detection {status}")
+                    
+                    # Handle display scaling controls
+                    if key == ord('+') or key == ord('='):
+                        self.display_scale = min(1.0, self.display_scale + 0.05)
+                        self.display_width = int(self.original_width * self.display_scale)
+                        self.display_height = int(self.original_height * self.display_scale)
+                        print(f"[{self.video_id}] Display scale increased to {self.display_scale:.2f}x")
+                    elif key == ord('-') or key == ord('_'):
+                        self.display_scale = max(0.2, self.display_scale - 0.05)
+                        self.display_width = int(self.original_width * self.display_scale)
+                        self.display_height = int(self.original_height * self.display_scale)
+                        print(f"[{self.video_id}] Display scale decreased to {self.display_scale:.2f}x")
+                    
+                    # Toggle auto-restart feature
+                    elif key == ord('l'):
+                        self.auto_restart = not self.auto_restart
+                        status = "ENABLED" if self.auto_restart else "DISABLED"
+                        print(f"[{self.video_id}] Auto-restart {status}")
                         # Display status on frame
-                        cv2.putText(processed_frame, "Area config CLEARED - Ready to define new areas", (20, 100),
-                                  cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1)
-                    else:
-                        print(f"[{self.video_id}] Failed to clear area configuration")
-                        cv2.putText(processed_frame, "Failed to clear area config", (20, 100),
-                                  cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+                        cv2.putText(processed_frame, f"Auto-restart: {status}", (20, 80),
+                                  cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+
+                    # Clear all area configurations and restart
+                    elif key == ord('d'):
+                        print(f"[{self.video_id}] Clearing all area configurations and restarting...")
+
+                        # Use the area manager's clear and restart method
+                        success = self.area_manager.clear_all_and_restart()
+
+                        if success:
+                            print(f"[{self.video_id}] Area configuration cleared and restarted successfully")
+                            # Display status on frame
+                            cv2.putText(processed_frame, "Area config CLEARED - Ready to define new areas", (20, 100),
+                                      cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1)
+                        else:
+                            print(f"[{self.video_id}] Failed to clear area configuration")
+                            cv2.putText(processed_frame, "Failed to clear area config", (20, 100),
+                                      cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+                else:
+                    # In headless mode, use a short sleep to prevent high CPU usage
+                    import time
+                    time.sleep(0.01)
                 
         except Exception as e:
             print(f"[{self.video_id}] Error in process: {str(e)}")
@@ -952,8 +1002,8 @@ class VideoProcessorMP(multiprocessing.Process):
             print(f"[{self.video_id}] Error releasing video resource: {str(e)}")
             
         try:
-            # Try to close window - only if window_name exists
-            if hasattr(self, 'window_name'):
+            # Try to close window only if video interface was enabled
+            if hasattr(self, 'show_video_interface') and self.show_video_interface and hasattr(self, 'window_name'):
                 print(f"[{self.video_id}] Destroying window...")
                 cv2.destroyWindow(self.window_name)
         except Exception as e:

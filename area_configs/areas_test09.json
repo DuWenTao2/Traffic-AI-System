@@ -1,0 +1,169 @@
+{
+  "DETECTION": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1280,
+          0
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "DETECTION",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "PARKING": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1280,
+          0
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "PARKING",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "TRAFFIC_LINE": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1280,
+          0
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "TRAFFIC_LINE",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "TRAFFIC_SIGN": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1280,
+          0
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "TRAFFIC_SIGN",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "LEFT_LANE": [
+    {
+      "points": [
+        [
+          112,
+          392
+        ],
+        [
+          1009,
+          230
+        ]
+      ],
+      "type": "LEFT_LANE",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "CENTER_LANE": [
+    {
+      "points": [
+        [
+          333,
+          481
+        ],
+        [
+          1044,
+          252
+        ]
+      ],
+      "type": "CENTER_LANE",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "RIGHT_LANE": [
+    {
+      "points": [
+        [
+          1070,
+          492
+        ],
+        [
+          1176,
+          232
+        ]
+      ],
+      "type": "RIGHT_LANE",
+      "enabled": true,
+      "properties": {}
+    }
+  ]
+}

@@ -1,0 +1,269 @@
+{
+  "DETECTION": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1920,
+          0
+        ],
+        [
+          1920,
+          1080
+        ],
+        [
+          0,
+          1080
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "DETECTION",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "PARKING": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1920,
+          0
+        ],
+        [
+          1920,
+          1080
+        ],
+        [
+          0,
+          1080
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "PARKING",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "TRAFFIC_LINE": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1920,
+          0
+        ],
+        [
+          1920,
+          1080
+        ],
+        [
+          0,
+          1080
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "TRAFFIC_LINE",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "TRAFFIC_SIGN": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1920,
+          0
+        ],
+        [
+          1920,
+          1080
+        ],
+        [
+          0,
+          1080
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "TRAFFIC_SIGN",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "LEFT_LANE": [
+    {
+      "points": [
+        [
+          582,
+          540
+        ],
+        [
+          198,
+          1080
+        ]
+      ],
+      "type": "LEFT_LANE",
+      "enabled": true,
+      "properties": {
+        "direction": "down",
+        "angle": 125.41705527646744,
+        "length": 662.6130092293691,
+        "slope": -0.7111111111111111,
+        "confidence": 0.8222222222222222
+      }
+    }
+  ],
+  "CENTER_LANE": [
+    {
+      "points": [
+        [
+          1317,
+          540
+        ],
+        [
+          1655,
+          1080
+        ]
+      ],
+      "type": "CENTER_LANE",
+      "enabled": true,
+      "properties": {
+        "direction": "down",
+        "angle": 57.956483167255584,
+        "length": 637.0588669816942,
+        "slope": 0.6259259259259259,
+        "confidence": 0.8435185185185186
+      }
+    }
+  ],
+  "RIGHT_LANE": [
+    {
+      "points": [
+        [
+          1919,
+          540
+        ],
+        [
+          1907,
+          1080
+        ]
+      ],
+      "type": "RIGHT_LANE",
+      "enabled": true,
+      "properties": {
+        "direction": "down",
+        "angle": 91.27303002005671,
+        "length": 540.1333168764911,
+        "slope": -0.022222222222222223,
+        "confidence": 0.9944444444444445
+      }
+    }
+  ],
+  "SPEED": [
+    {
+      "points": [
+        [
+          568,
+          648
+        ],
+        [
+          842,
+          648
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {
+        "lane_id": 0,
+        "position": 0.4,
+        "source": "lane_based"
+      }
+    },
+    {
+      "points": [
+        [
+          658,
+          432
+        ],
+        [
+          932,
+          432
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {
+        "lane_id": 0,
+        "position": 0.6,
+        "source": "lane_based"
+      }
+    },
+    {
+      "points": [
+        [
+          1078,
+          648
+        ],
+        [
+          1352,
+          648
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {
+        "lane_id": 1,
+        "position": 0.4,
+        "source": "lane_based"
+      }
+    },
+    {
+      "points": [
+        [
+          1191,
+          432
+        ],
+        [
+          1465,
+          432
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {
+        "lane_id": 1,
+        "position": 0.6,
+        "source": "lane_based"
+      }
+    }
+  ],
+  "EMERGENCY_LANE": [
+    {
+      "points": [
+        [
+          
