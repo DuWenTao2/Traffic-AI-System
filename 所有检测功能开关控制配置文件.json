@@ -13,8 +13,8 @@
   "show_video_interface": false,
   "video_sources": [
     {
-      "id": "test21", 
-      "source": "TestingVideos\\test21.mp4",
+      "id": "test18", 
+      "source": "TestingVideos\\test18.mp4",  
       "use_stream": false,
       "location": "Test Road Intersection",
       "coordinates": {"lat": 0.0, "lng": 0.0},

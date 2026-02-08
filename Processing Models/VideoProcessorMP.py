@@ -217,6 +217,11 @@ class VideoProcessorMP(multiprocessing.Process):
                     if "show_video_interface" in config:
                         self.show_video_interface = config["show_video_interface"]
                         print(f"[{self.video_id}] Video interface setting: {'Enabled' if self.show_video_interface else 'Disabled (Linux mode)'}")
+                        
+                        # In headless mode, disable auto-restart for local videos
+                        if not self.show_video_interface and not self.use_stream:
+                            self.auto_restart = False
+                            print(f"[{self.video_id}] Auto-restart disabled for headless local video processing")
                     return merged_settings
             else:
                 print(f"[{self.video_id}] Config file not found, using default settings")
@@ -459,6 +464,10 @@ class VideoProcessorMP(multiprocessing.Process):
               # Make sure area manager is initialized with correct AreaType
             print(f"[{self.video_id}] Area manager initialized with available area types: {[t.name for t in AreaType]}")
             
+            # Add stream interruption detection variables
+            stream_interruption_count = 0
+            max_stream_interruptions = 5  # Allow 5 consecutive failed frames for streams
+            
             # Configure wrong direction detector with area manager
             # Configure lane lines
             self.wrong_direction_detector.configure_lane_lines(self.area_manager)
@@ -468,9 +477,23 @@ class VideoProcessorMP(multiprocessing.Process):
                     # Read frame using our VideoReader with error handling
                     ret, frame = self.video_reader.read()
                     
-                    # Check if we reached the end of the video
+                    # Check if we reached the end of the video or stream interruption
                     if not ret or frame is None:
                         print(f"[{self.video_id}] End of video reached or frame reading failed")
+                        
+                        # Handle stream interruption detection
+                        if self.use_stream:
+                            stream_interruption_count += 1
+                            print(f"[{self.video_id}] Stream interruption detected ({stream_interruption_count}/{max_stream_interruptions})")
+                            
+                            # If in headless mode and multiple stream interruptions, stop
+                            if not self.show_video_interface and stream_interruption_count >= max_stream_interruptions:
+                                print(f"[{self.video_id}] Maximum stream interruptions reached, stopping processing")
+                                break
+                            
+                            # Small delay before retrying stream
+                            time.sleep(0.5)
+                            continue
                         
                         # If auto-restart is enabled and it's not a stream, reset the video
                         if self.auto_restart and not self.use_stream:
@@ -505,6 +528,9 @@ class VideoProcessorMP(multiprocessing.Process):
                     # Try to recover by short sleep and continue
                     time.sleep(0.1)
                     continue
+                
+                # Reset stream interruption count on successful frame read
+                stream_interruption_count = 0
 
                 # Create a copy of the frame to work with
                 processed_frame = frame.copy()
