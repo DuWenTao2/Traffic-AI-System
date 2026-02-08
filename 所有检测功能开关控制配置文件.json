@@ -10,6 +10,7 @@
     "lane_detection": false,
     "road_debris_detection": false
   },
+  "show_video_interface": false,
   "video_sources": [
     {
       "id": "test21", 
