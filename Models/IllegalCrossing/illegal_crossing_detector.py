@@ -25,6 +25,9 @@ class IllegalCrossingDetector:
         self.crossing_objects = {}
         self.violation_manager = violation_manager
         
+        # Initialize detection status flag for video storage integration
+        self.has_detection = False
+        
         # Don't create log file or output directory directly
         self.log_file = None
         self.output_dir = None
@@ -59,6 +62,9 @@ class IllegalCrossingDetector:
             frame: Frame with illegal crossing annotations
         """
         current_time = time.time()
+        
+        # Reset detection flag at the start of each frame processing
+        self.has_detection = False
         
         # Track objects currently in illegal crossing areas
         current_crossing_ids = set()
@@ -116,6 +122,9 @@ class IllegalCrossingDetector:
                 if not object_data.get('snapshot_taken', False) and 'box' in object_data:
                     self._save_violation_snapshot(frame, object_data['box'], track_id, object_data['class_id'])
                     object_data['snapshot_taken'] = True
+                
+                # Set detection flag when violation occurs
+                self.has_detection = True
             
             # Draw information on the frame
             self._draw_crossing_info(frame, track_id, object_data, crossing_duration)

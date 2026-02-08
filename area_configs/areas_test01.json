@@ -1,0 +1,49 @@
+{
+  "SPEED": [
+    {
+      "points": [
+        [
+          155,
+          219
+        ],
+        [
+          500,
+          226
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {}
+    },
+    {
+      "points": [
+        [
+          226,
+          80
+        ],
+        [
+          428,
+          77
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {}
+    },
+    {
+      "points": [
+        [
+          190,
+          157
+        ],
+        [
+          473,
+          156
+        ]
+      ],
+      "type": "SPEED",
+      "enabled": true,
+      "properties": {}
+    }
+  ]
+}

@@ -5,14 +5,14 @@
   "date": "2026-02-05",
   "parameters": {
     "# 基本配置": "",
-    "storage_enabled": false,
+    "storage_enabled": true,
     "storage_path": "Videos_Result",
     "video_format": "mp4",
     "codec": "avc1",
     "fps": 20.0,
     "video_duration": 45,
-    "pre_detection_buffer": 3,
-    "post_detection_buffer": 6,
+    "pre_detection_buffer": 5,
+    "post_detection_buffer": 10,
     "max_storage_size": 2048,
     "cleanup_enabled": true
   }

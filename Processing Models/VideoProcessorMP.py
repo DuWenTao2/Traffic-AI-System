@@ -615,6 +615,9 @@ class VideoProcessorMP(multiprocessing.Process):
                         try:
                             processed_frame = self.illegal_crossing_detector.process_objects(
                                 processed_frame, self.tracked_objects, self.area_manager)
+                            # Even in full screen mode, check if illegal crossing violation was detected
+                            if hasattr(self.illegal_crossing_detector, 'has_detection') and self.illegal_crossing_detector.has_detection:
+                                self.has_detection = True
                         except Exception as e:
                             print(f"[{self.video_id}] Error in illegal crossing detection (full screen): {str(e)}")
                             import traceback

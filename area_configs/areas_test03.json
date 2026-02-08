@@ -1,0 +1,166 @@
+{
+  "DETECTION": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1280,
+          0
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "DETECTION",
+      "enabled": true,
+      "properties": {}
+    },
+    {
+      "points": [
+        [
+          541,
+          172
+        ],
+        [
+          1181,
+          513
+        ]
+      ],
+      "type": "DETECTION",
+      "enabled": true,
+      "properties": {}
+    },
+    {
+      "points": [
+        [
+          1135,
+          633
+        ],
+        [
+          370,
+          227
+        ]
+      ],
+      "type": "DETECTION",
+      "enabled": true,
+      "properties": {}
+    },
+    {
+      "points": [
+        [
+          869,
+          660
+        ],
+        [
+          296,
+          315
+        ]
+      ],
+      "type": "DETECTION",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "PARKING": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1280,
+          0
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "PARKING",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "TRAFFIC_LINE": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1280,
+          0
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "TRAFFIC_LINE",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "TRAFFIC_SIGN": [
+    {
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1280,
+          0
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          0,
+          720
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "type": "TRAFFIC_SIGN",
+      "enabled": true,
+      "properties": {}
+    }
+  ],
+  "LEFT_LANE": [],
+  "CENTER_LANE": [],
+  "RIGHT_LANE": []
+}

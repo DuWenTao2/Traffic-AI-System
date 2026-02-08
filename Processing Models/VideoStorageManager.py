@@ -4,6 +4,7 @@ import time
 import threading
 import json
 from datetime import datetime
+from collections import deque
 
 class VideoStorageManager:
     def __init__(self, stream_id, camera_location="Unknown", config=None):
@@ -49,8 +50,8 @@ class VideoStorageManager:
         self.detection_start_time = None
         self.last_detection_time = None
         
-        # 帧缓冲队列
-        self.frame_buffer = []
+        # 帧缓冲队列 (使用deque提高性能)
+        self.frame_buffer = deque(maxlen=int(self.config["pre_detection_buffer"] * self.config["fps"]))
         self.buffer_size = int(self.config["pre_detection_buffer"] * self.config["fps"])
         
         # 锁用于线程安全
@@ -98,7 +99,7 @@ class VideoStorageManager:
                         self.out.write(buffered_frame)
                     
                     # Clear buffer
-                    self.frame_buffer = []
+                    self.frame_buffer.clear()
                     
                     self.is_recording = True
                     self.start_time = time.time()
@@ -194,15 +195,13 @@ class VideoStorageManager:
         if has_detection:
             self.last_detection_time = time.time()
         
-        # Not recording: add to buffer
+        # Not recording: maintain buffer for pre-recording functionality
         if not self.is_recording:
-            # Add to buffer
+            # Add current frame to buffer for potential pre-recording
+            # Using deque with maxlen automatically manages buffer size
             self.frame_buffer.append(frame.copy())
-            # Maintain buffer size
-            if len(self.frame_buffer) > self.buffer_size:
-                self.frame_buffer.pop(0)
             
-            # If there's detection, start recording
+            # If there's detection, start recording with buffered frames
             if has_detection:
                 self._start_recording(frame)
         else:
@@ -256,6 +255,6 @@ class VideoStorageManager:
         self._stop_recording()
         
         # Clear frame buffer
-        self.frame_buffer = []
+        self.frame_buffer.clear()
         
         print(f"[{self.stream_id}] Video storage manager cleaned up")

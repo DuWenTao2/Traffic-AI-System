@@ -1,0 +1,36 @@
+{
+  "DETECTION": [],
+  "EMERGENCY_LANE": [
+    {
+      "points": [
+        [
+          701,
+          360
+        ],
+        [
+          826,
+          347
+        ],
+        [
+          549,
+          989
+        ],
+        [
+          312,
+          932
+        ],
+        [
+          703,
+          363
+        ],
+        [
+          701,
+          360
+        ]
+      ],
+      "type": "EMERGENCY_LANE",
+      "enabled": true,
+      "properties": {}
+    }
+  ]
+}
