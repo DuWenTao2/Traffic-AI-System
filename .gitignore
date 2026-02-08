@@ -64,6 +64,19 @@ Violation_Proc/violations/plates/
 Violation_Proc/accident_alerts/images/
 Violation_Proc/violations/manual_reviews.json
 
+# Archive and large files #
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.bz2
+*.xz
+*.iso
+*.dmg
+*.exe
+*.msi
+
 # Output directories #
 output/
 output_video/
