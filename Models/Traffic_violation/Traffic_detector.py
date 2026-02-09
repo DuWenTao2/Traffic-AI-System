@@ -140,7 +140,7 @@ class TrafficViolations:
         violations = []
         
         if detection_results is None and self.model is not None:
-            detection_results = self.model(frame)
+            detection_results = self.model(frame, verbose=False)
             a = detection_results[0].boxes.data.cpu()
             px = pd.DataFrame(a).astype("float")
         else:

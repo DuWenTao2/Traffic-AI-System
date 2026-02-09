@@ -6,6 +6,8 @@ import os
 import multiprocessing
 import json
 
+from interface_uav_platform import get_token, get_online_uav_stream
+
 # Add the Processing Models directory to the Python path
 processing_models_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Processing Models")
 sys.path.append(processing_models_path)
@@ -23,25 +25,41 @@ if __name__ == '__main__':
     if os.path.exists(config_file):
         with open(config_file, 'r', encoding='utf-8') as f:
             config = json.load(f)
-        # Get video sources from config
-        video_sources = config.get('video_sources', [])
-        print(f"Loaded {len(video_sources)} video sources from configuration file")
+        # # Get video sources from config
+        # video_sources = config.get('video_sources', [])
+        # print(f"Loaded {len(video_sources)} video sources from configuration file")
     else:
         print(f"Warning: Configuration file '{config_file}' not found. Using empty video sources list.")
         video_sources = []
     
+    # Get uav platform Token
+    token = get_token()
+    if not token:
+        print("Failed to obtain token, exiting...")
+        sys.exit(1)
+    print("="*50)
+    
+    # Query online UAV video streams as video_sources
+    online_uav_streams = get_online_uav_stream(token, max_speed=5, min_speed=2)
+    if online_uav_streams:
+        # video_sources = online_uav_streams  # Use all online UAV streams
+        video_sources = [online_uav_streams[0]]  # Use only the first online UAV stream for testing
+    else:
+        print("No online UAV streams available, exiting...")
+        sys.exit(1)
+    
     # # Define video sources - add more or change sources as needed
     # video_sources = [
-    #     # Example configuration for local video file with bidirectional speed limits
-    #     {
-    #         "id": "video2", 
-    #         "source": r"TestingVideos\test12.mp4",
-    #         "use_stream": False,
-    #         "location": "Test Road Intersection",
-    #         "coordinates": {"lat": 0.0, "lng": 0.0},
-    #         "max_speed": 5,      # 最高速度限制
-    #         "min_speed": 2       # 最低速度限制
-    #     },
+    #     # # Example configuration for local video file with bidirectional speed limits
+    #     # {
+    #     #     "id": "video2", 
+    #     #     "source": r"TestingVideos\test12.mp4",
+    #     #     "use_stream": False,
+    #     #     "location": "Test Road Intersection",
+    #     #     "coordinates": {"lat": 0.0, "lng": 0.0},
+    #     #     "max_speed": 5,      # Maximum speed limit
+    #     #     "min_speed": 2       # Minimum speed limit
+    #     # },
     #     # Example configuration with only max speed (min_speed will use default)
     #     # {
     #     #     "id": "video3", 
@@ -61,18 +79,18 @@ if __name__ == '__main__':
     #     #     "max_speed": 50,
     #     #     "min_speed": 15
     #     # }
-
     #     #一个HTTP流配置
-    #     # {
-    #     #     "id": "highway_camera", 
-    #     #     "source": "https://traffic-cams.example.com/highway123",  # 公网流
-    #     #     "use_stream": True,
-    #     #     "location": "North Highway",
-    #     #     "coordinates": {"lat": 39.9142, "lng": 116.4174},
-    #     #     "max_speed": 100,
-    #     #     "min_speed": 20
-    #     # }
+    #     {
+    #         "id": "highway_camera", 
+    #         "source": "https://traffic-cams.example.com/highway123",  # 公网流
+    #         "use_stream": True,
+    #         "location": "North Highway",
+    #         "coordinates": {"lat": 39.9142, "lng": 116.4174},
+    #         "max_speed": 100,
+    #         "min_speed": 20
+    #     }
     # ]
+
     # Create and start video processor processes
     processors = []
 

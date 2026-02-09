@@ -128,7 +128,7 @@ class AccidentDetector:
             return processed_frame
 
         # Run accident detection on the entire frame
-        results = self.model(processed_frame)[0]
+        results = self.model(processed_frame, verbose=False)[0]
         
         # Filter and sort accident detections by confidence
         accident_boxes = []

@@ -155,7 +155,7 @@ class RoadDebrisDetector:
         
         try:
             # 运行抛洒物检测
-            results = self.model(processed_frame)[0]
+            results = self.model(processed_frame, verbose=False)[0]
             
             # 处理检测结果
             debris_detected = []

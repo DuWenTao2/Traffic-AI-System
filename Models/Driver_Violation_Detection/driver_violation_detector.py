@@ -175,7 +175,7 @@ class DriverViolationDetector:
                 return frame
                 
             # Directly run driver violation detection on the entire frame
-            driver_results = self.model(result_frame)
+            driver_results = self.model(result_frame, verbose=False)
             
             # Check for driver violation detection results
             if len(driver_results) > 0 and hasattr(driver_results[0], 'boxes') and driver_results[0].boxes is not None:

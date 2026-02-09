@@ -105,7 +105,7 @@ class LicensePlateDetector:
                     img = frame[y1:y2, x1:x2]
                 
             # Run detection model on the image - Use YOLOv8 syntax directly
-            results = self.model(img)
+            results = self.model(img, verbose=False)
             
             # No plates found
             if len(results) == 0 or len(results[0].boxes) == 0:
