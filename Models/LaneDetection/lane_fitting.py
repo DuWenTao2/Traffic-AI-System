@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import random
+import warnings
 
 
 class LineFitter:
@@ -28,7 +29,11 @@ class LineFitter:
         x_coords = [p[0] for p in points]
         
         # 一次多项式拟合：x = a*y + b
-        coeffs = np.polyfit(y_coords, x_coords, 1)
+        # Suppress RankWarning for poorly conditioned matrix
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", np.RankWarning)
+            coeffs = np.polyfit(y_coords, x_coords, 1)
         
         # 计算残差
         predicted = np.polyval(coeffs, y_coords)
@@ -81,7 +86,11 @@ class CurveFitter:
         x_coords = [p[0] for p in points]
         
         # 二次多项式拟合
-        coeffs = np.polyfit(y_coords, x_coords, 2)
+        # Suppress RankWarning for poorly conditioned matrix
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", np.RankWarning)
+            coeffs = np.polyfit(y_coords, x_coords, 2)
         
         # 计算残差
         predicted = np.polyval(coeffs, y_coords)
